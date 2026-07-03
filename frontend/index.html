@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HireIntel - Semantic Matching & RAG Dashboard</title>
+    
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-logo">
+                <div class="logo-icon">
+                    <i data-lucide="sparkles"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>Hire<span>Intel</span></h1>
+                    <p class="tagline">Next-Generation Semantic ATS & Analysis</p>
+                </div>
+            </div>
+            <div class="header-badge">
+                <span class="pulse-indicator"></span>
+                Local Matcher Online
+            </div>
+        </header>
+
+        <!-- Main Workspace Grid -->
+        <main class="workspace-grid">
+            
+            <!-- Left Side: Inputs Panel -->
+            <section class="panel input-panel">
+                <div class="panel-header">
+                    <i data-lucide="sliders-horizontal" class="panel-icon"></i>
+                    <h2>Configure Criteria</h2>
+                </div>
+                
+                <form id="match-form" class="form-container">
+                    <!-- Job Description / Keyword -->
+                    <div class="form-group">
+                        <label for="job-desc-input">
+                            Job Description or Keyword
+                            <span class="tooltip-icon" title="Enter a full job description, or just a role keyword (like 'SDE II') to auto-expand.">
+                                <i data-lucide="help-circle"></i>
+                            </span>
+                        </label>
+                        <textarea 
+                            id="job-desc-input" 
+                            name="job_description" 
+                            placeholder="Paste the full job description here, or type a title like 'React Developer' to auto-expand standard requirements..." 
+                            required></textarea>
+                    </div>
+
+                    <!-- File Upload Zone -->
+                    <div class="form-group">
+                        <label>Upload Candidates (PDF / DOCX)</label>
+                        <div id="drop-zone" class="drop-zone">
+                            <i data-lucide="upload-cloud" class="upload-icon"></i>
+                            <p class="upload-text">Drag & drop files here, or <span>browse files</span></p>
+                            <p class="upload-subtext">Supports PDF and DOCX (Max 5MB per file)</p>
+                            <input type="file" id="file-input" name="files" multiple accept=".pdf,.docx" style="display: none;">
+                        </div>
+                        <ul id="file-list" class="file-list"></ul>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button type="submit" id="submit-btn" class="primary-btn">
+                        <span class="btn-text">Analyze</span>
+                        <i data-lucide="arrow-right" class="btn-icon"></i>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Right Side: Analytics Dashboard -->
+            <section class="panel results-panel">
+                <div class="panel-header">
+                    <i data-lucide="bar-chart-3" class="panel-icon"></i>
+                    <h2 id="results-header-text">Analysis & Leaderboard</h2>
+                </div>
+                
+                <div class="results-content">
+                    
+                    <!-- 1. Empty State -->
+                    <div id="state-empty" class="state-container">
+                        <div class="state-illustration">
+                            <i data-lucide="folder-search"></i>
+                        </div>
+                        <h3>Ready to Match</h3>
+                        <p>Upload candidate resumes and paste job requirements on the left to run semantic scoring and AI diagnostics.</p>
+                    </div>
+
+                    <!-- 2. Loading State (Skeletons) -->
+                    <div id="state-loading" class="state-container" style="display: none;">
+                        <div class="loader-header">
+                            <div class="shimmer loader-badge"></div>
+                            <div class="shimmer loader-text"></div>
+                        </div>
+                        <div class="skeleton-cards">
+                            <div class="skeleton-card">
+                                <div class="card-shimmer-header">
+                                    <div class="shimmer bar-title"></div>
+                                    <div class="shimmer circle-score"></div>
+                                </div>
+                                <div class="shimmer bar-body-lg"></div>
+                                <div class="shimmer bar-body-md"></div>
+                            </div>
+                            <div class="skeleton-card">
+                                <div class="card-shimmer-header">
+                                    <div class="shimmer bar-title"></div>
+                                    <div class="shimmer circle-score"></div>
+                                </div>
+                                <div class="shimmer bar-body-lg"></div>
+                                <div class="shimmer bar-body-md"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Error State -->
+                    <div id="state-error" class="state-container" style="display: none;">
+                        <div class="state-illustration error-icon">
+                            <i data-lucide="alert-triangle"></i>
+                        </div>
+                        <h3>Matching Process Failed</h3>
+                        <p id="error-message">Something went wrong while communicating with the server. Please verify your connection.</p>
+                        <button type="button" id="retry-btn" class="secondary-btn">Try Again</button>
+                    </div>
+
+                    <!-- 4. Active Results State -->
+                    <div id="state-active" class="active-results-container" style="display: none;">
+                        <!-- Job Description Used Banner -->
+                        <div id="jd-used-banner" class="jd-banner" style="display: none;">
+                            <div class="jd-banner-title">
+                                <i data-lucide="book-open"></i>
+                                <span>Expanded Job Criteria (Generated by Gemini)</span>
+                            </div>
+                            <div class="jd-banner-toggle" id="jd-toggle-btn">
+                                <span>Show generated details</span>
+                                <i data-lucide="chevron-down"></i>
+                            </div>
+                            <pre id="jd-text-preview" class="jd-text-preview" style="display: none;"></pre>
+                        </div>
+
+                        <!-- Leaderboard Cards -->
+                        <div id="results-leaderboard" class="results-leaderboard"></div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- App Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
