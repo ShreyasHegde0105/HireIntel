@@ -1,6 +1,8 @@
 import json
+from datetime import datetime
 from typing import List
 from pydantic import BaseModel, Field
+
 import google.generativeai as genai
 from app.config import settings
 
@@ -25,8 +27,11 @@ async def analyze_resume_fit(resume_text: str, jd_text: str) -> dict:
     
     model = genai.GenerativeModel("gemini-2.5-flash")
     
+    current_year = datetime.now().year
     prompt = f"""
     You are an expert technical recruiter. Analyze the following candidate resume against the provided job description.
+    
+    CRITICAL: For all academic, timeline, graduation, and experience calculations, assume the current year is {current_year}.
     
     Job Description:
     {jd_text}
@@ -34,6 +39,7 @@ async def analyze_resume_fit(resume_text: str, jd_text: str) -> dict:
     Candidate Resume:
     {resume_text}
     """
+
     
     try:
         # Request a structured JSON response matching the Pydantic schema asynchronously
@@ -83,3 +89,39 @@ async def generate_jd_from_title(job_title: str) -> str:
     except Exception as e:
         # Fallback in case of API failure
         return f"Standard Job Description for {job_title}.\n(Could not retrieve full details due to API error: {str(e)})"
+
+async def ocr_document_fallback(file_bytes: bytes, mime_type: str) -> str:
+    """
+    Uses Gemini 2.5 Flash's multimodal capabilities to perform OCR on a scanned document or image in-memory.
+    Extracts and returns the text content.
+    """
+    settings.validate()
+    
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    
+    prompt = """
+    You are a professional document text extractor.
+    Your task is to perform OCR on the attached document and extract all of its text content.
+    Extract the text exactly as it appears in the document.
+    Return ONLY the extracted text content. Do not include any greeting, markdown formatting, or comments.
+    """
+    
+    try:
+        response = await model.generate_content_async(
+            [
+                {"mime_type": mime_type, "data": file_bytes},
+                prompt
+            ]
+        )
+        return response.text.strip()
+    except Exception as e:
+        raise RuntimeError(f"OCR Fallback failed: {str(e)}")
+
+async def ocr_pdf_fallback(file_bytes: bytes) -> str:
+    """
+    Wrapper function for PDF OCR fallback, calling ocr_document_fallback with 'application/pdf'.
+    """
+    return await ocr_document_fallback(file_bytes, "application/pdf")
+
+
+

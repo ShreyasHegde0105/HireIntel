@@ -69,8 +69,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const ext = file.name.split('.').pop().toLowerCase();
             
             // Check file type
-            if (ext !== 'pdf' && ext !== 'docx') {
-                alert(`File "${file.name}" ignored. Only PDF and DOCX documents are supported.`);
+            const allowedExts = ['pdf', 'docx', 'png', 'jpg', 'jpeg', 'webp'];
+            if (!allowedExts.includes(ext)) {
+                alert(`File "${file.name}" ignored. Only PDF, DOCX, and images (PNG, JPG, JPEG, WEBP) are supported.`);
                 continue;
             }
             
@@ -115,7 +116,12 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // Choose file icon based on type
             const ext = file.name.split('.').pop().toLowerCase();
-            const iconName = ext === 'pdf' ? "file-text" : "file-code";
+            let iconName = "file-text";
+            if (ext === 'docx') {
+                iconName = "file-code";
+            } else if (['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+                iconName = "file-image";
+            }
             
             infoDiv.innerHTML = `
                 <i data-lucide="${iconName}"></i>
@@ -264,17 +270,31 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="card-header-main" style="border-left: 3px solid var(--danger);">
                         <div class="candidate-meta">
                             <span class="rank-badge">${index + 1}</span>
-                            <span class="candidate-title" style="color: var(--danger); font-weight: 500;">
-                                ${candidate.filename} (Parsing Error)
+                            <span class="candidate-title" style="color: var(--danger); font-weight: 500;" title="${escapeHTML(candidate.filename)}">
+                                ${escapeHTML(candidate.filename)}
                             </span>
                         </div>
                         <div class="score-badge-container">
-                            <span class="score-badge" style="color: var(--danger); background-color: #fef2f2; border-color: #fca5a5;">
-                                Failed
+                            <span class="score-badge" style="color: var(--danger); background-color: #fef2f2; border-color: #fca5a5; font-size: 0.8rem;">
+                                Parsing Error
                             </span>
+                            <i data-lucide="chevron-down" class="card-toggle-icon"></i>
                         </div>
                     </div>
+                    <div class="card-details" style="background-color: #fff5f5; border-left: 3px solid var(--danger);">
+                        <p style="color: var(--danger); font-size: 0.85rem; font-weight: 500; display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.4;">
+                            <i data-lucide="alert-circle" style="width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px;"></i>
+                            <span>Error details: ${escapeHTML(candidate.error_message)}</span>
+                        </p>
+                    </div>
                 `;
+                
+                // Toggle Expand Card Details
+                const header = card.querySelector(".card-header-main");
+                header.addEventListener("click", () => {
+                    card.classList.toggle("open");
+                });
+                
                 resultsLeaderboard.appendChild(card);
                 return;
             }
@@ -293,12 +313,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const gaps = analysis.gaps || [];
             const recommendations = analysis.recommendations || [];
 
-            // Compile card UI contents
+            // Compile card UI contents securely
             card.innerHTML = `
                 <div class="card-header-main">
                     <div class="candidate-meta">
                         <span class="rank-badge">${index + 1}</span>
-                        <span class="candidate-title" title="${candidate.filename}">${candidate.filename}</span>
+                        <span class="candidate-title" title="${escapeHTML(candidate.filename)}">${escapeHTML(candidate.filename)}</span>
                     </div>
                     <div class="score-badge-container">
                         <span class="score-badge ${matchClass}">${score}% Fit</span>
@@ -309,7 +329,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="card-details">
                     <!-- 1. AI Professional Summary -->
                     <p class="candidate-summary">
-                        ${analysis.summary || "No candidate summary generated."}
+                        ${escapeHTML(analysis.summary) || "No candidate summary generated."}
                     </p>
                     
                     <!-- 2. Strengths and Gaps grid -->
@@ -320,7 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <span>Key Strengths</span>
                             </div>
                             <ul class="analysis-list strengths-list">
-                                ${strengths.map(s => `<li>${s}</li>`).join("") || "<li>No core strengths extracted.</li>"}
+                                ${strengths.map(s => `<li>${escapeHTML(s)}</li>`).join("") || "<li>No core strengths extracted.</li>"}
                             </ul>
                         </div>
                         <div class="analysis-col">
@@ -329,7 +349,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <span>Critical Gaps</span>
                             </div>
                             <ul class="analysis-list gaps-list">
-                                ${gaps.map(g => `<li>${g}</li>`).join("") || "<li>No gaps identified.</li>"}
+                                ${gaps.map(g => `<li>${escapeHTML(g)}</li>`).join("") || "<li>No gaps identified.</li>"}
                             </ul>
                         </div>
                     </div>
@@ -338,7 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="recommendations-section">
                         <h4>Optimization Suggestions</h4>
                         <ul class="rec-list">
-                            ${recommendations.map(r => `<li>${r}</li>`).join("") || "<li>Resume aligns closely with JD. No recommendations.</li>"}
+                            ${recommendations.map(r => `<li>${escapeHTML(r)}</li>`).join("") || "<li>Resume aligns closely with JD. No recommendations.</li>"}
                         </ul>
                     </div>
                     

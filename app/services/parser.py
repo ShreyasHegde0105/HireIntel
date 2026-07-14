@@ -52,5 +52,8 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
         return parse_pdf(file_bytes)
     elif ext == 'docx':
         return parse_docx(file_bytes)
+    elif ext in ['png', 'jpg', 'jpeg', 'webp']:
+        # Return empty string to trigger OCR fallback in the router
+        return ""
     else:
-        raise ValueError(f"Unsupported file format: .{ext}. Only PDF and DOCX files are allowed.")
+        raise ValueError(f"Unsupported file format: .{ext}. Only PDF, DOCX, and images (PNG, JPG, JPEG, WEBP) are allowed.")

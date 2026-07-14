@@ -62,12 +62,12 @@
 
                     <!-- File Upload Zone -->
                     <div class="form-group">
-                        <label>Upload Candidates (PDF / DOCX)</label>
+                        <label>Upload Candidates (PDF / DOCX / Images)</label>
                         <div id="drop-zone" class="drop-zone">
                             <i data-lucide="upload-cloud" class="upload-icon"></i>
                             <p class="upload-text">Drag & drop files here, or <span>browse files</span></p>
-                            <p class="upload-subtext">Supports PDF and DOCX (Max 5MB per file)</p>
-                            <input type="file" id="file-input" name="files" multiple accept=".pdf,.docx" style="display: none;">
+                            <p class="upload-subtext">Supports PDF, DOCX, and Images (Max 5MB per file)</p>
+                            <input type="file" id="file-input" name="files" multiple accept=".pdf,.docx,.png,.jpg,.jpeg,.webp" style="display: none;">
                         </div>
                         <ul id="file-list" class="file-list"></ul>
                     </div>

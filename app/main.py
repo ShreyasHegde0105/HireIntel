@@ -24,6 +24,15 @@ app.add_middleware(
 # Register our resume router (mounts all the resume routes we created under /api)
 app.include_router(resume.router)
 
+@app.on_event("startup")
+def startup_event():
+    """
+    Validate settings immediately at server startup.
+    Fails early if critical environment keys (e.g. GEMINI_API_KEY) are missing.
+    """
+    settings.validate()
+
+
 @app.get("/")
 def read_root():
     """
