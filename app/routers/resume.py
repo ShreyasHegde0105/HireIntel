@@ -3,7 +3,7 @@ from typing import List
 import asyncio
 from app.services.parser import extract_text
 from app.services.matcher import calculate_similarity, get_embedding
-from app.services.gemini_service import analyze_resume_fit, generate_jd_from_title, ocr_pdf_fallback
+from app.services.gemini_service import analyze_resume_fit, generate_jd_from_title, ocr_pdf_fallback, ocr_document_fallback
 
 router = APIRouter(prefix="/api", tags=["Resumes"])
 
@@ -29,16 +29,32 @@ async def process_single_resume(file: UploadFile, final_jd: str, jd_embedding) -
         # Extract plain text (offloaded to thread to prevent blocking event loop)
         raw_text = await asyncio.to_thread(extract_text, file_bytes, file.filename)
         
+        # If no text was extracted directly, attempt AI OCR fallback
         if not raw_text.strip():
-            if file.filename.lower().endswith('.pdf'):
-                # Try to use Gemini OCR fallback for scanned PDF
+            ext = file.filename.lower().split('.')[-1]
+            if ext == 'pdf':
                 try:
                     raw_text = await ocr_pdf_fallback(file_bytes)
                 except Exception as ocr_err:
-                    raise ValueError(f"The PDF contains no text, and OCR fallback failed: {str(ocr_err)}")
+                    raise ValueError(f"PDF contains no selectable text and OCR failed: {str(ocr_err)}")
+            elif ext in ['png', 'jpg', 'jpeg', 'webp']:
+                mime_map = {
+                    'png': 'image/png',
+                    'jpg': 'image/jpeg',
+                    'jpeg': 'image/jpeg',
+                    'webp': 'image/webp'
+                }
+                mime_type = mime_map.get(ext, 'image/jpeg')
+                try:
+                    raw_text = await ocr_document_fallback(file_bytes, mime_type)
+                except Exception as ocr_err:
+                    raise ValueError(f"Image OCR extraction failed: {str(ocr_err)}")
             else:
-                raise ValueError("The parsed file contains no text. Check if the document is scanned or empty.")
+                raise ValueError("The parsed file contains no text. Please ensure the document has readable content.")
             
+        if not raw_text.strip():
+            raise ValueError("No text could be extracted from this document.")
+
         # Calculate similarity locally (SentenceTransformers) in thread with pre-computed embedding
         match_score = await asyncio.to_thread(calculate_similarity, raw_text, jd_embedding)
         
@@ -59,6 +75,7 @@ async def process_single_resume(file: UploadFile, final_jd: str, jd_embedding) -
             "status": "error",
             "error_message": str(e)
         }
+
 
 @router.post("/match")
 async def match_resumes(
