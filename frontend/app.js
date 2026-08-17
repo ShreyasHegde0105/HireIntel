@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let selectedFiles = [];
 
     // Backend Endpoint
-    const API_URL = "http://127.0.0.1:8000/api/match";
+    const API_URL = "https://hireintel-2.onrender.com/api/match";
 
     // Initialize Lucide Icons
     lucide.createIcons();
