@@ -19,15 +19,15 @@ COPY requirements.txt /code/requirements.txt
 # Install python dependencies
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-# Pre-download the Hugging Face model during Docker build to ensure instant container startup
-# The model will be cached in the Docker image layers.
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('nomic-ai/nomic-embed-text-v1.5', trust_remote_code=True)"
+# Pre-download the lightweight embedding model during Docker build
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 # Copy application code to container
 COPY ./app /code/app
 
-# Expose port 7860 (Hugging Face Spaces default port)
+# Expose port 7860 (or Render $PORT)
 EXPOSE 7860
 
 # Run Uvicorn ASGI server
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+
