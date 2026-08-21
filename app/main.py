@@ -6,7 +6,7 @@ from app.config import settings
 # Initialize the FastAPI App
 app = FastAPI(
     title="Semantic Resume Matching & RAG API",
-    description="Backend API for parsing and ranking resumes using local SentenceTransformers and the Gemini 1.5 Flash API.",
+    description="Backend API for parsing and ranking resumes using Google Gemini text-embedding-004 and Gemini 2.5 Flash API.",
     version="1.0.0"
 )
 

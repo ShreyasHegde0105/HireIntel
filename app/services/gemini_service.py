@@ -1,6 +1,7 @@
 import json
+import asyncio
 from datetime import datetime
-from typing import List
+from typing import List, Dict
 from pydantic import BaseModel, Field
 
 import google.generativeai as genai
@@ -9,6 +10,14 @@ from app.config import settings
 # Configure Gemini with the API Key
 if settings.GEMINI_API_KEY:
     genai.configure(api_key=settings.GEMINI_API_KEY)
+
+# Model instance cache to avoid recreating objects on every request
+_model_cache: Dict[str, genai.GenerativeModel] = {}
+
+def _get_generative_model(model_name: str) -> genai.GenerativeModel:
+    if model_name not in _model_cache:
+        _model_cache[model_name] = genai.GenerativeModel(model_name)
+    return _model_cache[model_name]
 
 # Define the structured schema we want Gemini to return
 class ResumeAnalysisSchema(BaseModel):
@@ -30,10 +39,10 @@ async def analyze_resume_fit(resume_text: str, jd_text: str) -> dict:
     CRITICAL: For all academic, timeline, graduation, and experience calculations, assume the current year is {current_year}.
     
     Job Description:
-    {jd_text}
+    {jd_text[:4000]}
     
     Candidate Resume:
-    {resume_text}
+    {resume_text[:4000]}
     """
 
     candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
@@ -41,15 +50,21 @@ async def analyze_resume_fit(resume_text: str, jd_text: str) -> dict:
     
     for model_name in candidate_models:
         try:
-            model = genai.GenerativeModel(model_name)
-            response = await model.generate_content_async(
-                prompt,
-                generation_config={
-                    "response_mime_type": "application/json",
-                    "response_schema": ResumeAnalysisSchema
-                }
+            model = _get_generative_model(model_name)
+            response = await asyncio.wait_for(
+                model.generate_content_async(
+                    prompt,
+                    generation_config={
+                        "response_mime_type": "application/json",
+                        "response_schema": ResumeAnalysisSchema,
+                        "temperature": 0.2,
+                        "max_output_tokens": 1024
+                    }
+                ),
+                timeout=12.0
             )
-            return json.loads(response.text)
+            if response.text:
+                return json.loads(response.text)
         except Exception as e:
             last_error = e
             continue
@@ -58,7 +73,7 @@ async def analyze_resume_fit(resume_text: str, jd_text: str) -> dict:
     err_str = str(last_error) if last_error else "Unknown error"
     return {
         "summary": "AI summary temporarily unavailable (check Gemini API key or quota).",
-        "strengths": ["Parsed and matched via high-context semantic vector similarity."],
+        "strengths": ["Parsed and matched via semantic vector similarity."],
         "gaps": ["Detailed LLM gap extraction requires an active Gemini API key with available quota."],
         "recommendations": ["Ensure your Gemini API key from Google AI Studio is active and within quota limits."],
         "match_explanation": f"Note: Semantic match score was computed locally. Gemini feedback note: {err_str[:120]}"
@@ -87,8 +102,14 @@ async def generate_jd_from_title(job_title: str) -> str:
     last_err = None
     for model_name in candidate_models:
         try:
-            model = genai.GenerativeModel(model_name)
-            response = await model.generate_content_async(prompt)
+            model = _get_generative_model(model_name)
+            response = await asyncio.wait_for(
+                model.generate_content_async(
+                    prompt,
+                    generation_config={"temperature": 0.3, "max_output_tokens": 800}
+                ),
+                timeout=10.0
+            )
             if response.text:
                 return response.text.strip()
         except Exception as e:
@@ -113,12 +134,16 @@ async def ocr_document_fallback(file_bytes: bytes, mime_type: str) -> str:
     last_err = None
     for model_name in candidate_models:
         try:
-            model = genai.GenerativeModel(model_name)
-            response = await model.generate_content_async(
-                [
-                    {"mime_type": mime_type, "data": file_bytes},
-                    prompt
-                ]
+            model = _get_generative_model(model_name)
+            response = await asyncio.wait_for(
+                model.generate_content_async(
+                    [
+                        {"mime_type": mime_type, "data": file_bytes},
+                        prompt
+                    ],
+                    generation_config={"temperature": 0.1, "max_output_tokens": 2048}
+                ),
+                timeout=15.0
             )
             if response.text:
                 return response.text.strip()
@@ -133,6 +158,7 @@ async def ocr_pdf_fallback(file_bytes: bytes) -> str:
     Wrapper function for PDF OCR fallback, calling ocr_document_fallback with 'application/pdf'.
     """
     return await ocr_document_fallback(file_bytes, "application/pdf")
+
 
 
 

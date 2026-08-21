@@ -1,58 +1,65 @@
-import os
 import math
+import hashlib
+from typing import List, Union
+import google.generativeai as genai
 from app.config import settings
 
-_local_model = None
+if settings.GEMINI_API_KEY:
+    genai.configure(api_key=settings.GEMINI_API_KEY)
 
-def _get_local_model():
-    global _local_model
-    if _local_model is None:
-        import torch
-        from sentence_transformers import SentenceTransformer
-        # Optimize PyTorch memory footprint for low-memory environments (Render 512MB)
-        torch.set_num_threads(2)
-        # Use lightweight 80MB model by default to prevent OOM
-        model_name = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-        _local_model = SentenceTransformer(model_name)
-    return _local_model
+_embedding_cache = {}  # In-memory LRU-like cache (limited size) to avoid re-embedding identical texts
+MAX_CACHE_SIZE = 128
 
-def get_embedding(text: str):
+def _get_cache_key(text: str) -> str:
+    return hashlib.md5(text.encode('utf-8')).hexdigest()
+
+def get_embedding(text: str) -> List[float]:
     """
-    Converts a string of text into an embedding vector.
-    Uses Gemini text-embedding-004 (0 MB RAM overhead on server) when available,
-    falling back to a lazy-loaded lightweight local SentenceTransformer.
+    Converts a string of text into a 768-dimensional embedding vector
+    using Google's Gemini text-embedding-004 model (0 MB RAM overhead on server).
+    Includes an in-memory MD5 cache to avoid recomputing identical texts.
     """
     clean_text = text.strip() if text else ""
     if not clean_text:
         return [0.0] * 768
 
-    # 1. Primary: Gemini Embeddings API (Zero RAM on server)
+    cache_key = _get_cache_key(clean_text)
+    if cache_key in _embedding_cache:
+        return _embedding_cache[cache_key]
+
+    embedding = None
+
     if settings.GEMINI_API_KEY:
         try:
-            import google.generativeai as genai
             res = genai.embed_content(
                 model="models/text-embedding-004",
                 content=clean_text[:8000],
                 task_type="retrieval_document"
             )
             if "embedding" in res and res["embedding"]:
-                return res["embedding"]
-        except Exception:
-            pass
+                embedding = res["embedding"]
+        except Exception as e:
+            print(f"Gemini embedding error: {e}")
 
-    # 2. Local Fallback (Lazy loaded in memory)
-    model = _get_local_model()
-    emb = model.encode(clean_text, normalize_embeddings=True)
-    return emb.tolist() if hasattr(emb, "tolist") else list(emb)
+    # Fallback to zero vector if API call fails
+    if embedding is None:
+        embedding = [0.0] * 768
 
-def calculate_similarity(resume_text: str, jd_text_or_emb) -> float:
+    # Save to memory cache (keep size bounded)
+    if len(_embedding_cache) >= MAX_CACHE_SIZE:
+        _embedding_cache.pop(next(iter(_embedding_cache)))
+    _embedding_cache[cache_key] = embedding
+
+    return embedding
+
+def calculate_similarity(resume_text: str, jd_text_or_emb: Union[str, List[float]]) -> float:
     """
-    Calculates the cosine similarity between the resume text and the job description.
-    Accepts either raw job description text (str) or a pre-computed embedding list/tensor.
+    Calculates cosine similarity between resume text and job description.
+    Accepts either raw job description text (str) or a pre-computed embedding list.
     Uses pure-math dot product (instant execution, zero memory overhead).
     Returns a percentage score between 0.0 and 100.0.
     """
-    if not resume_text.strip():
+    if not resume_text or not resume_text.strip():
         return 0.0
 
     # 1. Compute resume embedding
@@ -64,7 +71,7 @@ def calculate_similarity(resume_text: str, jd_text_or_emb) -> float:
     elif isinstance(jd_text_or_emb, (list, tuple)):
         jd_emb = jd_text_or_emb
     else:
-        jd_emb = jd_text_or_emb.tolist() if hasattr(jd_text_or_emb, "tolist") else list(jd_text_or_emb)
+        jd_emb = list(jd_text_or_emb)
 
     # 3. Fast Vector Cosine Similarity
     dot = sum(a * b for a, b in zip(resume_emb, jd_emb))
@@ -79,5 +86,3 @@ def calculate_similarity(resume_text: str, jd_text_or_emb) -> float:
     # 4. Extract percentage score clamped between 0 and 100
     percentage_score = max(0.0, min(1.0, float(score))) * 100
     return round(percentage_score, 2)
-
-

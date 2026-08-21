@@ -1,36 +1,42 @@
 import io
-import pdfplumber
-import pypdfium2 as pdfium
+import gc
 from docx import Document
 
 def parse_pdf(file_bytes: bytes) -> str:
     """
     Extracts text from a PDF file in-memory.
-    First attempts pdfplumber for layout structure; if empty or errors,
-    falls back to pypdfium2 (C++ PDFium engine) which handles complex fonts & layouts.
+    Uses pypdfium2 (C++ PDFium engine) as primary fast parser (<5ms, negligible RAM).
+    Falls back to pdfplumber only if needed.
     """
     text = ""
-    # 1. Primary: Try pdfplumber
+    # 1. Primary Fast C++ Engine: pypdfium2 (low memory, blazing fast)
     try:
-        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
+        import pypdfium2 as pdfium
+        pdf = pdfium.PdfDocument(file_bytes)
+        extracted = []
+        for page in pdf:
+            textpage = page.get_textpage()
+            page_text = textpage.get_text_range()
+            if page_text:
+                extracted.append(page_text)
+            textpage.close()
+            page.close()
+        pdf.close()
+        text = "\n".join(extracted).strip()
     except Exception:
         pass
 
-    # 2. Secondary fallback: pypdfium2
-    if not text.strip():
+    # 2. Secondary fallback: pdfplumber (if pypdfium2 returns empty)
+    if not text:
         try:
-            pdf = pdfium.PdfDocument(file_bytes)
-            extracted = []
-            for page in pdf:
-                textpage = page.get_textpage()
-                page_text = textpage.get_text_range()
-                if page_text:
-                    extracted.append(page_text)
-            text = "\n".join(extracted)
+            import pdfplumber
+            with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+                pages_text = []
+                for page in pdf.pages:
+                    pt = page.extract_text()
+                    if pt:
+                        pages_text.append(pt)
+                text = "\n".join(pages_text).strip()
         except Exception:
             pass
 
@@ -47,8 +53,9 @@ def parse_docx(file_bytes: bytes) -> str:
         
         # Extract text from paragraphs
         for paragraph in doc.paragraphs:
-            if paragraph.text.strip():
-                text_content.append(paragraph.text)
+            clean_p = paragraph.text.strip()
+            if clean_p:
+                text_content.append(clean_p)
                 
         # Extract text from tables (often used in resumes for layout)
         for table in doc.tables:
@@ -62,7 +69,7 @@ def parse_docx(file_bytes: bytes) -> str:
                     text_content.append(" | ".join(row_text))
                     
         return "\n".join(text_content).strip()
-    except Exception as e:
+    except Exception:
         return ""
 
 def extract_text(file_bytes: bytes, filename: str) -> str:
@@ -81,4 +88,5 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
         return ""
     else:
         raise ValueError(f"Unsupported file format: .{ext}. Only PDF, DOCX, TXT, and images (PNG, JPG, JPEG, WEBP) are allowed.")
+
 
