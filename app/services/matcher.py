@@ -1,88 +1,94 @@
-import math
+import asyncio
 import hashlib
-from typing import List, Union
-import google.generativeai as genai
+import logging
+import math
+from collections import OrderedDict
+from typing import List
+
+from google.genai import types
+
 from app.config import settings
+from app.services.ai_client import get_client
 
-if settings.GEMINI_API_KEY:
-    genai.configure(api_key=settings.GEMINI_API_KEY)
+logger = logging.getLogger(__name__)
 
-_embedding_cache = {}  # In-memory LRU-like cache (limited size) to avoid re-embedding identical texts
+
+class EmbeddingUnavailableError(Exception):
+    """Raised when an embedding could not be computed. Never replaced by a zero vector."""
+
+
+# Only successful embeddings are cached. Least-recently-used entries are evicted first.
+_embedding_cache: "OrderedDict[str, List[float]]" = OrderedDict()
 MAX_CACHE_SIZE = 128
 
-def _get_cache_key(text: str) -> str:
-    return hashlib.md5(text.encode('utf-8')).hexdigest()
 
-def get_embedding(text: str) -> List[float]:
-    """
-    Converts a string of text into a 768-dimensional embedding vector
-    using Google's Gemini text-embedding-004 model (0 MB RAM overhead on server).
-    Includes an in-memory MD5 cache to avoid recomputing identical texts.
-    """
-    clean_text = text.strip() if text else ""
-    if not clean_text:
-        return [0.0] * 768
+def _cache_key(text: str) -> str:
+    raw = f"{settings.EMBEDDING_MODEL}|{settings.EMBEDDING_DIMENSIONS}|{text}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-    cache_key = _get_cache_key(clean_text)
-    if cache_key in _embedding_cache:
-        return _embedding_cache[cache_key]
 
-    embedding = None
+def _as_query(jd_text: str) -> str:
+    # gemini-embedding-2 takes no task_type; the task goes in a text prefix.
+    # See https://ai.google.dev/gemini-api/docs/embeddings
+    return f"task: search result | query: {jd_text}"
 
-    if settings.GEMINI_API_KEY:
-        try:
-            res = genai.embed_content(
-                model="models/text-embedding-004",
-                content=clean_text[:8000],
-                task_type="retrieval_document"
-            )
-            if "embedding" in res and res["embedding"]:
-                embedding = res["embedding"]
-        except Exception as e:
-            print(f"Gemini embedding error: {e}")
 
-    # Fallback to zero vector if API call fails
-    if embedding is None:
-        embedding = [0.0] * 768
+def _as_document(resume_text: str) -> str:
+    return f"title: none | text: {resume_text}"
 
-    # Save to memory cache (keep size bounded)
-    if len(_embedding_cache) >= MAX_CACHE_SIZE:
-        _embedding_cache.pop(next(iter(_embedding_cache)))
-    _embedding_cache[cache_key] = embedding
 
-    return embedding
+async def _embed(text: str) -> List[float]:
+    key = _cache_key(text)
+    cached = _embedding_cache.get(key)
+    if cached is not None:
+        _embedding_cache.move_to_end(key)
+        return cached
 
-def calculate_similarity(resume_text: str, jd_text_or_emb: Union[str, List[float]]) -> float:
-    """
-    Calculates cosine similarity between resume text and job description.
-    Accepts either raw job description text (str) or a pre-computed embedding list.
-    Uses pure-math dot product (instant execution, zero memory overhead).
-    Returns a percentage score between 0.0 and 100.0.
-    """
-    if not resume_text or not resume_text.strip():
-        return 0.0
+    try:
+        response = await asyncio.wait_for(
+            get_client().aio.models.embed_content(
+                model=settings.EMBEDDING_MODEL,
+                contents=text,
+                config=types.EmbedContentConfig(output_dimensionality=settings.EMBEDDING_DIMENSIONS),
+            ),
+            timeout=settings.EMBEDDING_TIMEOUT,
+        )
+        values = list(response.embeddings[0].values or [])
+    except asyncio.TimeoutError:
+        logger.warning("embedding timed out", extra={"model": settings.EMBEDDING_MODEL})
+        raise EmbeddingUnavailableError("Similarity scoring timed out.") from None
+    except Exception as e:
+        logger.warning(
+            "embedding failed",
+            extra={"model": settings.EMBEDDING_MODEL, "error": type(e).__name__, "detail": str(e)[:300]},
+        )
+        raise EmbeddingUnavailableError("Similarity scoring is temporarily unavailable.") from e
 
-    # 1. Compute resume embedding
-    resume_emb = get_embedding(resume_text)
-    
-    # 2. Resolve JD embedding
-    if isinstance(jd_text_or_emb, str):
-        jd_emb = get_embedding(jd_text_or_emb)
-    elif isinstance(jd_text_or_emb, (list, tuple)):
-        jd_emb = jd_text_or_emb
-    else:
-        jd_emb = list(jd_text_or_emb)
+    if not values or not any(values):
+        logger.warning("embedding was empty", extra={"model": settings.EMBEDDING_MODEL})
+        raise EmbeddingUnavailableError("Similarity scoring returned no result.")
 
-    # 3. Fast Vector Cosine Similarity
-    dot = sum(a * b for a, b in zip(resume_emb, jd_emb))
-    norm_a = math.sqrt(sum(a * a for a in resume_emb))
-    norm_b = math.sqrt(sum(b * b for b in jd_emb))
-    
+    _embedding_cache[key] = values
+    if len(_embedding_cache) > MAX_CACHE_SIZE:
+        _embedding_cache.popitem(last=False)
+    return values
+
+
+async def embed_job_description(jd_text: str) -> List[float]:
+    return await _embed(_as_query(jd_text[: settings.MAX_EMBEDDING_CHARS]))
+
+
+async def embed_resume(resume_text: str) -> List[float]:
+    return await _embed(_as_document(resume_text[: settings.MAX_EMBEDDING_CHARS]))
+
+
+def cosine_similarity_score(a: List[float], b: List[float]) -> float:
+    """Cosine similarity mapped to 0-100. This is a similarity measure, not a probability of fit."""
+    if len(a) != len(b):
+        raise EmbeddingUnavailableError("Embedding sizes do not match.")
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(y * y for y in b))
     if norm_a == 0.0 or norm_b == 0.0:
-        return 0.0
-        
-    score = dot / (norm_a * norm_b)
-    
-    # 4. Extract percentage score clamped between 0 and 100
-    percentage_score = max(0.0, min(1.0, float(score))) * 100
-    return round(percentage_score, 2)
+        raise EmbeddingUnavailableError("Similarity scoring returned no result.")
+    score = sum(x * y for x, y in zip(a, b, strict=True)) / (norm_a * norm_b)
+    return round(max(0.0, min(1.0, score)) * 100, 1)

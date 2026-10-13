@@ -1,0 +1,22 @@
+Backend Engineer (Python) - Bengaluru / Hybrid
+
+About the role
+We are a 40-person B2B SaaS startup building invoicing and payments software for small businesses. You will design, build and run the APIs behind our web and mobile apps.
+
+Must have
+- 3+ years of professional backend development in Python
+- Experience building REST APIs with FastAPI, Django or Flask
+- Strong SQL skills with PostgreSQL, including schema design and query optimisation
+- Experience writing automated tests (pytest or similar)
+- Working knowledge of Git and code review
+
+Nice to have
+- Docker and deploying services to AWS or GCP
+- Background job queues (Celery, RQ or similar) and Redis
+- Experience with payments or financial data
+- CI/CD pipelines (GitHub Actions or GitLab CI)
+
+Responsibilities
+- Own backend features end to end, from design to production monitoring
+- Improve API performance and reliability
+- Review code and mentor junior engineers

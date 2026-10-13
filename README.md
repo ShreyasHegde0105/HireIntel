@@ -1,129 +1,141 @@
 # HireIntel 🎯
-### Next-Generation Semantic Resume Matcher & RAG Diagnostics
+### AI-assisted resume review: similarity scoring plus evidence-based strengths and gaps
 
-HireIntel is a modern, high-performance Applicant Tracking System (ATS) utility designed for HR teams. It replaces simple, rigid keyword-matching with deep semantic matching powered by local Machine Learning models, and layers generative AI on top to provide detailed feedback, strengths/gaps analysis, and candidate optimization recommendations.
+HireIntel helps a recruiter look through a batch of resumes for one job. You paste a job description (or a short job title), upload resumes, and for each resume HireIntel shows:
 
----
+- a **similarity score** (0–100) between the job description and the resume, computed from text embeddings;
+- an **AI-written analysis**: a short summary, requirements the resume shows evidence for, requirements with no evidence found, and points to verify with the candidate;
+- the **extracted text**, so you can check what the system actually read.
 
-## 📋 Problem Statement
-
-Traditional Applicant Tracking Systems (ATS) suffer from several critical limitations:
-1. **Rigid Keyword Matching:** Qualified candidates are routinely filtered out simply because their resumes use synonyms or different phrasing (e.g., "Python Developer" vs. "Backend Software Engineer").
-2. **Context Truncation:** Most standard embedding models (like `all-MiniLM-L6-v2`) have a 512-token limit (approx. 350 words). Long, detailed resumes are silently cut off, losing critical experience and achievements from earlier years.
-3. **Lack of Qualitative Feedback:** Recruiter dashboards provide a single arbitrary percentage score without explaining *why* a candidate is a good fit or identifying specific skill gaps.
-4. **Scanned PDF & Image Failures:** Standard text parsers crash or return empty strings when processing scanned documents or image-based resumes.
-5. **Static LLM Time Boundaries:** Large Language Models lack an active system clock, causing them to generate false discrepancy reports when analyzing graduation years (e.g., thinking a student who started in 2023 is still in their 2nd year when the current year is 2026).
+> **This is a portfolio demo, not a hiring tool.** Results are suggestions for a human reviewer. The similarity score is not a probability of fit, and the AI analysis can be wrong. HireIntel never rejects anyone automatically.
 
 ---
 
-## 💡 The Solution
+## 📋 Problem
 
-HireIntel solves these challenges by combining a high-capacity, local semantic embedding pipeline with generative RAG diagnostics:
-* **High-Context Local Search:** Leverages `nomic-embed-text-v1.5` to represent entire multi-page resumes and job descriptions as 768-dimensional vectors with an 8,192-token context window.
-* **Recruiter-Grade Diagnostics:** Uses Gemini 2.5 Flash to automatically extract structured JSON feedback including candidate summaries, key strengths, critical gaps, and resume optimization tips.
-* **Multimodal OCR Fallback:** Automatically detects scanned PDFs or image uploads (PNG, JPG, JPEG, WEBP) and falls back to Gemini's vision capability to run OCR in-memory.
-* **Dynamic Time Anchoring:** Automatically injects the server's current calendar year into the LLM context to ensure accurate date math for student graduation and experience timelines.
-* **Zero-Persistence Privacy:** Processes documents entirely in-memory using temporary binary streams. No candidate resumes or PII are written to disk or stored.
+Recruiters reviewing many resumes run into a few recurring problems that HireIntel tries to make visible:
 
----
+1. **Keyword matching misses synonyms.** "Backend Software Engineer" and "Python Developer" can describe the same person. Embeddings capture some of that similarity.
+2. **A single score explains nothing.** HireIntel pairs the score with requirement-level evidence and gaps.
+3. **Scanned resumes have no text.** PDFs without a text layer and image resumes go through AI text recognition (OCR), and the result is labelled as OCR output.
+4. **LLMs get dates wrong.** The current year is passed to the model so it can calculate graduation and experience dates correctly.
 
-## 📈 Model Comparison & Metrics
+## 🧭 Design principles
 
-By upgrading from the baseline model to Nomic 1.5, we achieved significant improvements in coverage and semantic accuracy:
-
-| Metric | Baseline (`all-MiniLM-L6-v2`) | Upgrade (`nomic-embed-text-v1.5`) | Impact / Benefit |
-| :--- | :--- | :--- | :--- |
-| **Context Window** | 512 tokens (~350 words) | **8,192 tokens (~6,000 words)** | **16x increase**; processes multi-page resumes without truncation. |
-| **Vector Dimensions**| 384 dimensions | **768 dimensions** | **Double the representation capacity** for complex technical skills. |
-| **Domain Suitability**| General semantic text | **Search/Document retrieval** | Highly optimized for matching queries (JDs) to documents (Resumes). |
-| **Licensing** | Apache 2.0 | **Apache 2.0** | 100% free and compliant for commercial use. |
-| **Inference Latency** | < 10ms per resume | **~50ms - 150ms per resume** | Negligible change to user experience (Gemini API remains the main bottleneck). |
-| **RAM Footprint** | ~120 MB | **~500 MB** | Lightweight enough to run locally on standard CPUs. |
+- **Failures are never disguised as results.** If scoring or analysis fails, the resume is marked `partial` with a visible warning. It never shows "0%" or a made-up analysis.
+- **"No evidence found" is not "lacks the skill".** Gaps are worded as missing evidence in the resume text.
+- **Resume text is treated as data.** The text is fenced off in the prompt, and the model is told to ignore and report any instructions hidden in a resume. The sample `kavya_python_intern.txt` contains such an instruction so you can see this in action.
+- **Honest limits.** Long resumes that had to be cut, and OCR output that hit its length limit, are flagged.
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Tech stack
 
-* **Frontend:** Vanilla HTML5, CSS3 (Editorial variables, glassmorphism, responsive grid), JavaScript (State management, async fetch).
-* **Backend:** FastAPI (Python web framework), Uvicorn (ASGI web server).
-* **AI/ML:** HuggingFace `SentenceTransformers` (`nomic-ai/nomic-embed-text-v1.5`), Google Gemini API (`gemini-2.5-flash` for structured JSON output and OCR).
-* **Document Handling:** `pdfplumber` (layout-aware PDF parsing), `python-docx` (Word paragraph & table parser), `einops` (tensor math).
+| Layer | Technology |
+|---|---|
+| Frontend | Vanilla HTML, CSS and JavaScript, served by the backend from the same origin |
+| Backend | FastAPI, Uvicorn, Python 3.12 |
+| AI | Google Gemini API via the `google-genai` SDK: `gemini-3.5-flash-lite` for analysis and OCR (falling back to `gemini-3.8-flash`), `gemini-embedding-2` (768 dimensions) for similarity |
+| Documents | `pypdfium2` and `pdfplumber` for PDFs, `python-docx` for DOCX |
+| Quality | pytest, ruff, GitHub Actions |
 
----
+Model IDs are configuration, not code (`app/config.py`), so a retired model can be replaced without a code change.
 
-## 📐 System Architecture
+## 📐 Architecture
 
 ```mermaid
-graph TD
-    A[Client: Browser HTML/CSS/JS] -- 1. Upload Resumes & JD/Keyword --> B(FastAPI Server)
-    B -- 2. Parse In-Memory Bytes --> C[Document Parser: pdfplumber/docx]
-    B -- 3. Fallback OCR for Images/Scans --> D[Gemini 2.5 API]
-    B -- 4. Compute Vector Embeddings --> E[Local Nomic 1.5 Model]
-    E -- 5. Cosine Similarity Score --> B
-    B -- 6. Generate Feedback Summary & Gaps --> D
-    D -- 7. Structured JSON response --> B
-    B -- 8. Sorted Leaderboard Results --> A
+flowchart TD
+    A[Browser] -->|POST /api/match: JD + resumes| B[FastAPI]
+    B --> L[Rate limits and daily budget]
+    B --> C[File validation by content type]
+    C --> D[Text extraction: pypdfium2, pdfplumber, python-docx]
+    D -->|no text layer| E[Gemini OCR, flagged as OCR]
+    B --> F[gemini-embedding-2: JD and resume vectors]
+    F --> G[Cosine similarity 0-100]
+    B --> H[Gemini analysis: structured JSON]
+    G --> I[Per-resume result: success, partial or error]
+    H --> I
+    I -->|sorted, unscored after scored, errors last| A
 ```
+
+Each resume is processed independently (4 at a time). One bad file can't break the batch. Scoring and analysis for a resume run concurrently.
+
+### Data handling
+
+- Files are processed in memory per request and are **not stored** by HireIntel. There is no database. The web server may briefly buffer uploads over 1 MB in a temporary file while receiving them.
+- **All resume text is sent to Google's Gemini API.** On the free tier, Google may use submitted content to improve its products and humans may review it ([Gemini API terms](https://ai.google.dev/gemini-api/terms)). That is why the public demo asks for **sample or made-up resumes only**.
+- Logs record counts, statuses and error types, never resume or job description text.
 
 ---
 
-## ⚙️ Setup & Installation
+## 🔒 Public demo protections
 
-### Prerequisites
-* Python 3.10 or higher installed.
-* A free Gemini API Key (obtained from [Google AI Studio](https://aistudio.google.com/)).
+| Protection | Default | Setting |
+|---|---|---|
+| Requests per client per minute | 3 | `RATE_LIMIT_PER_MINUTE` |
+| Requests per client per day | 20 | `RATE_LIMIT_PER_DAY` |
+| Resumes processed per day (all users) | 150 | `DAILY_RESUME_BUDGET` |
+| Files per request | 10 | `MAX_FILES` |
+| Size per file | 5 MB | `MAX_FILE_SIZE_MB` |
+| Optional access code | off | `DEMO_ACCESS_CODE` |
+| Cross-origin calls | blocked | `CORS_ORIGINS` |
 
-### 1. Clone & Navigate
+Oversized requests are rejected before the body is read. File types are checked from the file's content, not just its extension. Legacy `.doc` files are rejected with a clear message. Limits are kept in memory and reset when the server restarts, which is fine for a single-instance demo.
+
+---
+
+## ⚙️ Run locally
+
+**Prerequisites:** Python 3.12+ and a Gemini API key from [Google AI Studio](https://aistudio.google.com/).
+
 ```bash
 git clone https://github.com/ShreyasHegde0105/HireIntel.git
 cd HireIntel
+
+python -m venv .venv
+# Windows: .\.venv\Scripts\Activate.ps1    macOS/Linux: source .venv/bin/activate
+pip install -r requirements-dev.txt
+
+cp .env.example .env    # then put your GEMINI_API_KEY in .env
+
+uvicorn app.main:app --reload
 ```
 
-### 2. Configure Environment Variables
-Create a file named `.env` in the root of the project:
-```env
-GEMINI_API_KEY=your_actual_gemini_api_key_here
-PORT=8000
-HOST=127.0.0.1
-```
+Open http://127.0.0.1:8000 and click **Load sample job & resumes**, then **Analyze and Rank**. API docs are at http://127.0.0.1:8000/docs.
 
-### 3. Create & Activate Virtual Environment
+### Tests and lint
+
 ```bash
-# Windows
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-
-# macOS/Linux
-python3 -m venv venv
-source venv/bin/activate
+pytest -q
+ruff check .
 ```
 
-### 4. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
+The tests use a fake Gemini client, so they need no API key and cost nothing. They cover the failure rules: a failed embedding never becomes a score and is never cached, failed analyses are never faked, temporary overloads are retried, bad files are rejected, and limits are enforced.
 
 ---
 
-## 🚀 Project Execution Process
+## 🚀 Deploy (Render free tier)
 
-Follow these steps to run the application locally:
+The repository includes `render.yaml` and a `Dockerfile`. The container runs as a non-root user, honours `$PORT`, and has a health check at `/health`.
 
-### 1. Start the Backend Server
-Run the FastAPI app using Uvicorn:
-```bash
-uvicorn app.main:app --reload
-```
-*Note: On your very first run or first match, the server will take a few moments to download the `nomic-embed-text-v1.5` model weights (~280 MB) to your local cache.*
+1. In Render, create a **Blueprint** from this repository (or a Docker web service).
+2. Set `GEMINI_API_KEY` in the service's environment. Optionally set `DEMO_ACCESS_CODE`.
+3. Deploy. The frontend and API are served from the same URL.
 
-The interactive API documentation will be available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+The free tier sleeps after 15 minutes without traffic. The first request after that can take about a minute while it wakes up; the frontend waits up to 3 minutes.
 
-### 2. Run the Frontend Dashboard
-Because CORS is configured to allow all origins for development, you can run the client dashboard using one of these options:
-* **Option A (Simple):** Double-click `frontend/index.html` to open it directly in your web browser.
-* **Option B (Dev Server):** Serve the frontend using a local server utility (e.g., Live Server extension in VS Code, or Python's HTTP server: `python -m http.server 3000` from the `frontend` folder).
+CI (`.github/workflows/ci.yml`) runs lint and tests on every push, then builds the Docker image and checks that `/health` responds.
 
-### 3. Match Resumes
-1. Select/upload multiple resumes (PDF, DOCX, or image formats).
-2. Enter a job description (either copy/paste full text, or type in a short role name like "React Native Dev" to auto-expand it).
-3. Click **Analyze Candidates** to view the ranked leaderboard, scores, and candidate feedback cards.
+---
+
+## ⚠️ Known limitations
+
+- The similarity score is uncalibrated cosine similarity. Scores for related resumes often cluster closely (for example 65–80), so compare candidates within one run rather than reading the number as an absolute grade.
+- The analysis is a single LLM pass per resume. It can miss or misread evidence, and it does not yet link each claim to the exact place in the resume.
+- DOCX text boxes are not read yet. Resumes laid out with text boxes may lose content.
+- Response time depends on Gemini. On the free tier the model is sometimes overloaded; affected resumes are then shown as `partial` with a warning.
+- No accounts, history or persistence. Re-running costs another round of API calls.
+
+## 🗺️ Next steps
+
+The next planned step is requirement-level evidence. The recruiter would confirm the job's requirements, and each resume would get a per-requirement verdict with a quote that is checked against the extracted text. Results would be grouped into transparent bands instead of being ranked by one score.
