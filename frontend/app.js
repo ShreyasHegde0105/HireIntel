@@ -13,6 +13,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const submitBtn = document.getElementById("submit-btn");
     const statusBadge = document.getElementById("status-badge");
     const statusText = document.getElementById("status-text");
+    const extractReqBtn = document.getElementById("extract-req-btn");
+    const reqEditor = document.getElementById("req-editor");
+    const reqList = document.getElementById("req-list");
+    const addReqBtn = document.getElementById("add-req-btn");
+    const clearReqBtn = document.getElementById("clear-req-btn");
+    const notAssessable = document.getElementById("not-assessable");
+    const notAssessableList = document.getElementById("not-assessable-list");
+    const notAssessableCount = document.getElementById("not-assessable-count");
 
     // State Containers
     const stateEmpty = document.getElementById("state-empty");
@@ -32,6 +40,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Local file cache
     let selectedFiles = [];
+    // Recruiter-confirmed requirements; empty means similarity-only mode
+    let requirements = [];
+    const MAX_REQUIREMENTS = 15;
 
     // The API is served from the same origin by default. To point a separately hosted
     // frontend at another backend, set window.HIREINTEL_API_BASE before this script loads.
@@ -150,6 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return new File([await r.blob()], path.split("/").pop(), { type: "text/plain" });
             }));
             jobDescInput.value = jd.trim();
+            setRequirements([], []);
             selectedFiles = [];
             handleFilesSelected(files);
         } catch {
@@ -158,6 +170,103 @@ document.addEventListener("DOMContentLoaded", () => {
             sampleBtn.disabled = false;
         }
     });
+
+    // -------------------------------------------------------------
+    // Requirement extraction and editing
+    // -------------------------------------------------------------
+    function accessHeaders() {
+        return limits.access_code_required ? { "X-Demo-Access-Code": accessCodeInput.value } : {};
+    }
+
+    extractReqBtn.addEventListener("click", async () => {
+        const jdText = jobDescInput.value.trim();
+        if (!jdText) {
+            jobDescInput.focus();
+            showFileWarning("Paste a job description first.");
+            return;
+        }
+        showFileWarning("");
+        const label = extractReqBtn.querySelector("span");
+        extractReqBtn.disabled = true;
+        label.textContent = "Extracting requirements…";
+        try {
+            const formData = new FormData();
+            formData.append("job_description", jdText);
+            const response = await fetch(`${API_BASE}/api/requirements`, {
+                method: "POST",
+                body: formData,
+                headers: accessHeaders(),
+            });
+            if (!response.ok) throw new Error(await readError(response));
+            const data = await response.json();
+            setRequirements(data.requirements || [], data.not_assessable || []);
+            if (!requirements.length) showFileWarning("No checkable requirements were found. Add them manually.");
+        } catch (error) {
+            showFileWarning(error instanceof TypeError ? "Could not reach the server." : error.message);
+        } finally {
+            extractReqBtn.disabled = false;
+            label.textContent = "Re-extract requirements";
+        }
+    });
+
+    function setRequirements(items, notAssessableItems) {
+        requirements = items.slice(0, MAX_REQUIREMENTS).map(r => ({ text: String(r.text || ""), importance: r.importance === "mandatory" ? "mandatory" : "preferred" }));
+        notAssessableList.innerHTML = notAssessableItems.map(item => `<li>${escapeHTML(item)}</li>`).join("");
+        notAssessableCount.textContent = notAssessableItems.length;
+        notAssessable.style.display = notAssessableItems.length ? "block" : "none";
+        if (!items.length && !notAssessableItems.length) {
+            extractReqBtn.querySelector("span").textContent = "Extract requirements to check";
+        }
+        renderRequirementEditor();
+    }
+
+    function renderRequirementEditor() {
+        reqEditor.style.display = requirements.length || notAssessable.style.display === "block" ? "flex" : "none";
+        reqList.innerHTML = "";
+        requirements.forEach((req, index) => {
+            const li = document.createElement("li");
+            li.className = "req-item";
+
+            const input = document.createElement("input");
+            input.type = "text";
+            input.className = "text-input";
+            input.value = req.text;
+            input.maxLength = 200;
+            input.setAttribute("aria-label", `Requirement ${index + 1}`);
+            input.addEventListener("input", () => { req.text = input.value; });
+
+            const select = document.createElement("select");
+            select.className = "importance-select";
+            select.setAttribute("aria-label", `Importance of requirement ${index + 1}`);
+            select.innerHTML = `<option value="mandatory">Mandatory</option><option value="preferred">Preferred</option>`;
+            select.value = req.importance;
+            select.addEventListener("change", () => { req.importance = select.value; });
+
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "file-remove-btn";
+            remove.setAttribute("aria-label", `Remove requirement ${index + 1}`);
+            remove.innerHTML = `<i data-lucide="x"></i>`;
+            remove.addEventListener("click", () => {
+                requirements.splice(index, 1);
+                renderRequirementEditor();
+            });
+
+            li.append(input, select, remove);
+            reqList.appendChild(li);
+        });
+        addReqBtn.disabled = requirements.length >= MAX_REQUIREMENTS;
+        lucide.createIcons();
+    }
+
+    addReqBtn.addEventListener("click", () => {
+        requirements.push({ text: "", importance: "preferred" });
+        renderRequirementEditor();
+        const inputs = reqList.querySelectorAll("input");
+        if (inputs.length) inputs[inputs.length - 1].focus();
+    });
+
+    clearReqBtn.addEventListener("click", () => setRequirements([], []));
 
     // Helper to dynamically set submit button text and results panel header text
     function updateUIForFileCount() {
@@ -266,16 +375,19 @@ document.addEventListener("DOMContentLoaded", () => {
             showFileWarning("Please paste a job description or a job title.");
             return;
         }
+        const confirmed = requirements
+            .map(r => ({ text: r.text.trim(), importance: r.importance }))
+            .filter(r => r.text);
         showFileWarning("");
 
         const formData = new FormData();
         formData.append("job_description", jdText);
+        if (confirmed.length) {
+            formData.append("requirements", JSON.stringify(confirmed));
+        }
         selectedFiles.forEach(file => formData.append("files", file));
 
-        const headers = {};
-        if (limits.access_code_required) {
-            headers["X-Demo-Access-Code"] = accessCodeInput.value;
-        }
+        const headers = accessHeaders();
 
         switchState("loading");
         submitBtn.disabled = true;
@@ -340,6 +452,177 @@ document.addEventListener("DOMContentLoaded", () => {
         el.style.display = "block";
     }
 
+    function errorCard(candidate) {
+        const card = document.createElement("div");
+        card.className = "candidate-card error-card";
+        const filename = escapeHTML(candidate.filename);
+        card.innerHTML = `
+            <div class="card-header-main">
+                <div class="candidate-meta">
+                    <span class="rank-badge rank-none" aria-label="Not ranked">–</span>
+                    <span class="candidate-title" title="${filename}">${filename}</span>
+                </div>
+                <div class="score-badge-container">
+                    <span class="score-badge error-badge">Could not process</span>
+                    <i data-lucide="chevron-down" class="card-toggle-icon"></i>
+                </div>
+            </div>
+            <div class="card-details">
+                <p class="card-error-text">
+                    <i data-lucide="alert-circle"></i>
+                    <span>${escapeHTML(candidate.error_message)}</span>
+                </p>
+            </div>
+        `;
+        attachToggle(card);
+        return card;
+    }
+
+    function warningsHtml(candidate) {
+        const warnings = Array.isArray(candidate.warnings) ? candidate.warnings : [];
+        return warnings.length
+            ? `<div class="card-warnings">${warnings.map(w => `<p><i data-lucide="alert-triangle"></i><span>${escapeHTML(w)}</span></p>`).join("")}</div>`
+            : "";
+    }
+
+    function rawTextSection(candidate) {
+        return `
+            <div class="card-actions">
+                <button type="button" class="toggle-raw-btn">
+                    <i data-lucide="terminal"></i>
+                    <span>View Extracted Text</span>
+                </button>
+            </div>
+            <pre class="raw-text-wrapper">${escapeHTML(candidate.raw_text)}</pre>
+        `;
+    }
+
+    function attachRawToggle(card) {
+        const toggleRawBtn = card.querySelector(".toggle-raw-btn");
+        const rawTextWrapper = card.querySelector(".raw-text-wrapper");
+        toggleRawBtn.addEventListener("click", (e) => {
+            e.stopPropagation(); // Avoid triggering card accordion collapse
+            const isRawOpen = rawTextWrapper.style.display === "block";
+            rawTextWrapper.style.display = isRawOpen ? "none" : "block";
+            toggleRawBtn.querySelector("span").textContent = isRawOpen ? "View Extracted Text" : "Hide Extracted Text";
+        });
+    }
+
+    // -------------------------------------------------------------
+    // Requirement mode: candidates grouped by evidence band
+    // -------------------------------------------------------------
+    const STATE_INFO = {
+        supported: { icon: "circle-check", label: "Evidence found", cls: "state-supported" },
+        needs_review: { icon: "circle-help", label: "Needs review", cls: "state-review" },
+        no_evidence: { icon: "circle-minus", label: "No evidence found", cls: "state-none" },
+    };
+    const BAND_CLASS = { B1: "band-1", B0: "band-1", B2: "band-2", B3: "band-3", B4: "band-4" };
+
+    function requirementRows(requirements) {
+        return requirements.map(r => {
+            const info = STATE_INFO[r.state] || STATE_INFO.needs_review;
+            const quotes = (Array.isArray(r.quotes) ? r.quotes : []).map(q => `
+                <blockquote class="evidence-quote ${q.verified ? "" : "unverified"}">
+                    “${escapeHTML(q.text)}”
+                    <span class="quote-tag">${q.verified ? "found in resume" : "not found in resume text"}</span>
+                </blockquote>`).join("");
+            return `
+                <li class="req-row ${info.cls}">
+                    <i data-lucide="${info.icon}" class="req-state-icon" aria-hidden="true"></i>
+                    <div class="req-body">
+                        <div class="req-title">
+                            <span>${escapeHTML(r.text)}</span>
+                            <span class="importance-tag ${r.importance === "mandatory" ? "mandatory" : ""}">${escapeHTML(r.importance)}</span>
+                        </div>
+                        <div class="req-state-label">${info.label}</div>
+                        ${r.note ? `<p class="req-note">${escapeHTML(r.note)}</p>` : ""}
+                        ${quotes}
+                    </div>
+                </li>`;
+        }).join("");
+    }
+
+    function renderRequirementResults(data, results) {
+        const notices = ["Candidates are grouped by the evidence found for mandatory requirements. Nobody is rejected automatically: review every group, including the lower ones."];
+        if (results.length && results.every(r => r.status === "error")) {
+            notices.push("None of the files could be processed. See the details on each card.");
+        }
+        renderNotice(runNotice, notices);
+
+        let currentGroup = null;
+        results.forEach(candidate => {
+            const assessment = candidate.assessment;
+            const group = candidate.status === "error" ? "error" : assessment ? assessment.band.code : "unassessed";
+            if (group !== currentGroup) {
+                currentGroup = group;
+                const label = group === "error" ? "Could not be processed"
+                    : group === "unassessed" ? "Not assessed (AI unavailable)"
+                    : `${group} · ${assessment.band.label}`;
+                const count = results.filter(r => (r.status === "error" ? "error" : r.assessment ? r.assessment.band.code : "unassessed") === group).length;
+                const header = document.createElement("h3");
+                header.className = `band-header ${BAND_CLASS[group] || ""}`;
+                header.textContent = `${label} (${count})`;
+                resultsLeaderboard.appendChild(header);
+            }
+
+            if (candidate.status === "error") {
+                resultsLeaderboard.appendChild(errorCard(candidate));
+                return;
+            }
+
+            const card = document.createElement("div");
+            card.className = "candidate-card";
+            const filename = escapeHTML(candidate.filename);
+            const score = typeof candidate.similarity_score === "number" ? `${candidate.similarity_score} similarity` : "similarity unavailable";
+
+            let headerRight;
+            let details;
+            if (assessment) {
+                const c = assessment.counts || {};
+                headerRight = `
+                    <span class="evidence-counts" title="Requirements with evidence found / needing review / with no evidence found">
+                        <span class="state-supported">✓ ${c.supported || 0}</span>
+                        <span class="state-review">? ${c.needs_review || 0}</span>
+                        <span class="state-none">– ${c.no_evidence || 0}</span>
+                    </span>
+                    <span class="similarity-small" title="Cosine similarity between the job description and resume (0-100). Not a probability of fit.">${score}</span>`;
+                details = `
+                    <p class="candidate-summary">${escapeHTML(assessment.summary)}</p>
+                    <ul class="req-results">${requirementRows(assessment.requirements || [])}</ul>
+                    ${assessment.points_to_verify && assessment.points_to_verify.length ? `
+                        <div class="recommendations-section">
+                            <h4>Points to Verify with the Candidate</h4>
+                            <ul class="rec-list">${listItems(assessment.points_to_verify, "")}</ul>
+                        </div>` : ""}
+                    <p class="ai-footnote">Assessed by ${escapeHTML(assessment.model)}. Quotes are checked against the extracted text; a found quote shows the words exist, not that the AI interpreted them correctly.</p>`;
+            } else {
+                headerRight = `<span class="score-badge unavailable-badge">Not assessed</span><span class="similarity-small">${score}</span>`;
+                details = `<p class="candidate-summary">The requirement assessment is unavailable for this resume right now.</p>`;
+            }
+
+            card.innerHTML = `
+                <div class="card-header-main">
+                    <div class="candidate-meta">
+                        <span class="candidate-title" title="${filename}">${filename}</span>
+                    </div>
+                    <div class="score-badge-container">
+                        ${headerRight}
+                        <i data-lucide="chevron-down" class="card-toggle-icon"></i>
+                    </div>
+                </div>
+                <div class="card-details">
+                    ${warningsHtml(candidate)}
+                    ${details}
+                    ${rawTextSection(candidate)}
+                </div>
+            `;
+            attachToggle(card);
+            attachRawToggle(card);
+            resultsLeaderboard.appendChild(card);
+        });
+        lucide.createIcons();
+    }
+
     function renderResults(data) {
         resultsLeaderboard.innerHTML = "";
         jdTextPreview.style.display = "none";
@@ -354,6 +637,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const results = Array.isArray(data.results) ? data.results : [];
+        if (data.mode === "requirements") {
+            renderRequirementResults(data, results);
+            return;
+        }
+
         const notices = [];
         if (data.scoring_available === false) {
             notices.push("Similarity scoring is unavailable right now, so candidates are not ranked. AI analysis is shown where available.");
@@ -371,35 +659,14 @@ document.addEventListener("DOMContentLoaded", () => {
         // Equal scores share a rank (1, 2, 2, 4), so ties are not presented as an order.
         const rankOf = score => 1 + scores.filter(s => s > score).length;
         results.forEach(candidate => {
-            const card = document.createElement("div");
-            card.className = "candidate-card";
-            const filename = escapeHTML(candidate.filename);
-
             if (candidate.status === "error") {
-                card.classList.add("error-card");
-                card.innerHTML = `
-                    <div class="card-header-main">
-                        <div class="candidate-meta">
-                            <span class="rank-badge rank-none" aria-label="Not ranked">–</span>
-                            <span class="candidate-title" title="${filename}">${filename}</span>
-                        </div>
-                        <div class="score-badge-container">
-                            <span class="score-badge error-badge">Could not process</span>
-                            <i data-lucide="chevron-down" class="card-toggle-icon"></i>
-                        </div>
-                    </div>
-                    <div class="card-details">
-                        <p class="card-error-text">
-                            <i data-lucide="alert-circle"></i>
-                            <span>${escapeHTML(candidate.error_message)}</span>
-                        </p>
-                    </div>
-                `;
-                attachToggle(card);
-                resultsLeaderboard.appendChild(card);
+                resultsLeaderboard.appendChild(errorCard(candidate));
                 return;
             }
 
+            const card = document.createElement("div");
+            card.className = "candidate-card";
+            const filename = escapeHTML(candidate.filename);
             const score = typeof candidate.similarity_score === "number" ? candidate.similarity_score : null;
             let scoreBadge;
             let rankBadge;
@@ -415,11 +682,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 const tied = scores.filter(s => s === score).length > 1;
                 rankBadge = `<span class="rank-badge" ${tied ? `title="Tied with another resume"` : ""}>${tied ? "=" : ""}${rank}</span>`;
             }
-
-            const warnings = Array.isArray(candidate.warnings) ? candidate.warnings : [];
-            const warningHtml = warnings.length
-                ? `<div class="card-warnings">${warnings.map(w => `<p><i data-lucide="alert-triangle"></i><span>${escapeHTML(w)}</span></p>`).join("")}</div>`
-                : "";
 
             const analysis = candidate.analysis;
             const analysisHtml = analysis
@@ -463,29 +725,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
 
                 <div class="card-details">
-                    ${warningHtml}
+                    ${warningsHtml(candidate)}
                     ${analysisHtml}
-                    <div class="card-actions">
-                        <button type="button" class="toggle-raw-btn">
-                            <i data-lucide="terminal"></i>
-                            <span>View Extracted Text</span>
-                        </button>
-                    </div>
-                    <pre class="raw-text-wrapper">${escapeHTML(candidate.raw_text)}</pre>
+                    ${rawTextSection(candidate)}
                 </div>
             `;
 
             attachToggle(card);
-
-            const toggleRawBtn = card.querySelector(".toggle-raw-btn");
-            const rawTextWrapper = card.querySelector(".raw-text-wrapper");
-            toggleRawBtn.addEventListener("click", (e) => {
-                e.stopPropagation(); // Avoid triggering card accordion collapse
-                const isRawOpen = rawTextWrapper.style.display === "block";
-                rawTextWrapper.style.display = isRawOpen ? "none" : "block";
-                toggleRawBtn.querySelector("span").textContent = isRawOpen ? "View Extracted Text" : "Hide Extracted Text";
-            });
-
+            attachRawToggle(card);
             resultsLeaderboard.appendChild(card);
         });
 

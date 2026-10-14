@@ -68,6 +68,26 @@
                             name="job_description" 
                             placeholder="Paste the full job description here, or type a title like 'React Developer' to auto-expand standard requirements..." 
                             required></textarea>
+                        <button type="button" id="extract-req-btn" class="secondary-btn sample-btn">
+                            <i data-lucide="list-checks"></i>
+                            <span>Extract requirements to check</span>
+                        </button>
+                    </div>
+
+                    <!-- Requirement editor (filled after extraction) -->
+                    <div class="form-group req-editor" id="req-editor" style="display: none;">
+                        <label>Requirements to check</label>
+                        <p class="req-help">AI-proposed from the job description. Edit them, set each one as mandatory or preferred, then analyse. Candidates are grouped by evidence for the mandatory ones.</p>
+                        <ul id="req-list" class="req-list"></ul>
+                        <div class="req-actions">
+                            <button type="button" id="add-req-btn" class="secondary-btn">+ Add requirement</button>
+                            <button type="button" id="clear-req-btn" class="secondary-btn">Use similarity only</button>
+                        </div>
+                        <details id="not-assessable" class="not-assessable" style="display: none;">
+                            <summary>Not checked from resumes (<span id="not-assessable-count">0</span>)</summary>
+                            <p class="req-help">A resume can't show these. Confirm them with the candidate directly.</p>
+                            <ul id="not-assessable-list"></ul>
+                        </details>
                     </div>
 
                     <!-- File Upload Zone -->

@@ -1055,6 +1055,205 @@ textarea:focus {
     margin-top: 0.75rem;
 }
 
+/* Requirement editor */
+.req-help {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+
+.req-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.req-item {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.req-item .text-input {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.85rem;
+    padding: 0.45rem 0.6rem;
+}
+
+.importance-select {
+    padding: 0.45rem 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-input);
+    color: var(--text-main);
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+}
+
+.req-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.req-actions .secondary-btn {
+    padding: 0.45rem 0.9rem;
+    font-size: 0.8rem;
+}
+
+.req-actions .secondary-btn:disabled,
+.sample-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.not-assessable {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.75rem;
+}
+
+.not-assessable summary {
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.not-assessable ul {
+    margin: 0.4rem 0 0 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* Requirement results */
+.band-header {
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-sm);
+    border-left: 4px solid var(--text-light);
+    background-color: var(--bg-workspace);
+    color: var(--text-main);
+    margin-top: 0.5rem;
+}
+
+.band-header.band-1 { border-left-color: var(--success); }
+.band-header.band-2 { border-left-color: var(--warning); }
+.band-header.band-3 { border-left-color: #f97316; }
+.band-header.band-4 { border-left-color: var(--danger); }
+
+.evidence-counts {
+    display: flex;
+    gap: 0.6rem;
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.state-supported { color: #047857; }
+.state-review { color: #b45309; }
+.state-none { color: var(--text-muted); }
+
+.similarity-small {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    white-space: nowrap;
+}
+
+.req-results {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.req-row {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background-color: #ffffff;
+}
+
+.req-state-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.req-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.req-title {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.importance-tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.importance-tag.mandatory { color: var(--accent); }
+
+.req-state-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.req-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+
+.evidence-quote {
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-main);
+    background-color: var(--success-bg);
+    border-left: 3px solid var(--success);
+    padding: 0.35rem 0.6rem;
+    border-radius: 4px;
+    overflow-wrap: anywhere;
+}
+
+.evidence-quote.unverified {
+    background-color: #fef2f2;
+    border-left-color: var(--danger);
+}
+
+.quote-tag {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 0.15rem;
+}
+
+.evidence-quote.unverified .quote-tag { color: var(--danger); }
+
 @media (max-width: 1024px) {
     .workspace-grid {
         grid-template-columns: 1fr;

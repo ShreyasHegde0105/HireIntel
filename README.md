@@ -7,6 +7,20 @@ HireIntel helps a recruiter look through a batch of resumes for one job. You pas
 - an **AI-written analysis**: a short summary, requirements the resume shows evidence for, requirements with no evidence found, and points to verify with the candidate;
 - the **extracted text**, so you can check what the system actually read.
 
+### Requirement mode (evidence per requirement)
+
+Click **Extract requirements to check** after pasting a job description:
+
+1. The AI proposes a checklist of requirements, each marked **mandatory** or **preferred**. Conditions a resume can't show (citizenship, documents, shift availability, relocation) are listed separately as *not checked from resumes*.
+2. You edit the list: reword items, change importance, delete them or add your own.
+3. Each resume is assessed against every confirmed requirement in one AI call. Each requirement gets one of three states:
+   - **Evidence found**: the AI quoted the resume, and the quote was **found in the extracted text** by HireIntel's own check.
+   - **Needs review**: the evidence is ambiguous, the AI's quote could not be found in the text, or part of the resume was cut.
+   - **No evidence found**: nothing in a complete, readable resume mentions it. This is not proof that the candidate lacks it.
+4. Candidates are grouped into bands by their mandatory requirements: **B1** all supported, **B2** some need review, **B3** no evidence for one, **B4** no evidence for two or more. Within a band, more supported preferred requirements come first. **No band rejects anyone.**
+
+A verified quote proves the words exist in the resume. It doesn't prove the AI interpreted them correctly, so the quotes are shown for you to judge.
+
 > **This is a portfolio demo, not a hiring tool.** Results are suggestions for a human reviewer. The similarity score is not a probability of fit, and the AI analysis can be wrong. HireIntel never rejects anyone automatically.
 
 ---
@@ -131,11 +145,15 @@ CI (`.github/workflows/ci.yml`) runs lint and tests on every push, then builds t
 ## ⚠️ Known limitations
 
 - The similarity score is uncalibrated cosine similarity. Scores for related resumes often cluster closely (for example 65–80), so compare candidates within one run rather than reading the number as an absolute grade.
-- The analysis is a single LLM pass per resume. It can miss or misread evidence, and it does not yet link each claim to the exact place in the resume.
+- The analysis is a single LLM pass per resume and can miss or misread evidence. In requirement mode, quotes are checked against the extracted text, but they are not yet highlighted in the original document.
+- "No evidence found" covers both "not mentioned" and "the resume shows something different" (e.g. a B.Sc. against a required B.Tech); the note explains which.
 - DOCX text boxes are not read yet. Resumes laid out with text boxes may lose content.
 - Response time depends on Gemini. On the free tier the model is sometimes overloaded; affected resumes are then shown as `partial` with a warning.
 - No accounts, history or persistence. Re-running costs another round of API calls.
 
 ## 🗺️ Next steps
 
-The next planned step is requirement-level evidence. The recruiter would confirm the job's requirements, and each resume would get a per-requirement verdict with a quote that is checked against the extracted text. Results would be grouped into transparent bands instead of being ranked by one score.
+- Show the original PDF beside the evidence, with verified quotes highlighted.
+- Let the recruiter override a requirement state, with a reason.
+- Read DOCX text boxes, headers and footers.
+- Build a small labelled evaluation set to measure how often requirement states agree with human reviewers.
