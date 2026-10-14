@@ -1,0 +1,13 @@
+[tool.ruff]
+line-length = 145
+target-version = "py312"
+extend-exclude = ["Private_Docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+# B008: FastAPI declares parameters with File()/Form()/Header() defaults by design
+ignore = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HireIntel - Semantic Matching & RAG Dashboard</title>
+    <title>HireIntel - Resume Review Assistant (Demo)</title>
     
     <!-- Premium Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Lucide Icons CDN -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@1.48.0/dist/umd/lucide.min.js" integrity="sha384-Hh7C333mXel+qppGoFs4qAOXp7h67eur4XsQVF2bvHAM3MQ4DX4cQI7oRCzb98J4" crossorigin="anonymous"></script>
     
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -25,14 +25,24 @@
                 </div>
                 <div class="logo-text">
                     <h1>Hire<span>Intel</span></h1>
-                    <p class="tagline">Next-Generation Semantic ATS & Analysis</p>
+                    <p class="tagline">AI-assisted resume review (demo)</p>
                 </div>
             </div>
-            <div class="header-badge">
+            <div class="header-badge status-checking" id="status-badge">
                 <span class="pulse-indicator"></span>
-                Local Matcher Online
+                <span id="status-text">Checking server…</span>
             </div>
         </header>
+
+        <!-- Demo notice -->
+        <div class="demo-notice" role="note">
+            <i data-lucide="info"></i>
+            <p>
+                <strong>Public demo.</strong> Please use the sample resumes or your own made-up ones, not real people's resumes.
+                Uploaded text is sent to Google's Gemini API (free tier), which may use it to improve Google's products.
+                Results are AI-generated suggestions for a human reviewer, not hiring decisions.
+            </p>
+        </div>
 
         <!-- Main Workspace Grid -->
         <main class="workspace-grid">
@@ -58,18 +68,49 @@
                             name="job_description" 
                             placeholder="Paste the full job description here, or type a title like 'React Developer' to auto-expand standard requirements..." 
                             required></textarea>
+                        <button type="button" id="extract-req-btn" class="secondary-btn sample-btn">
+                            <i data-lucide="list-checks"></i>
+                            <span>Extract requirements to check</span>
+                        </button>
+                    </div>
+
+                    <!-- Requirement editor (filled after extraction) -->
+                    <div class="form-group req-editor" id="req-editor" style="display: none;">
+                        <label>Requirements to check</label>
+                        <p class="req-help">AI-proposed from the job description. Edit them, set each one as mandatory or preferred, then analyse. Candidates are grouped by evidence for the mandatory ones.</p>
+                        <ul id="req-list" class="req-list"></ul>
+                        <div class="req-actions">
+                            <button type="button" id="add-req-btn" class="secondary-btn">+ Add requirement</button>
+                            <button type="button" id="clear-req-btn" class="secondary-btn">Use similarity only</button>
+                        </div>
+                        <details id="not-assessable" class="not-assessable" style="display: none;">
+                            <summary>Not checked from resumes (<span id="not-assessable-count">0</span>)</summary>
+                            <p class="req-help">A resume can't show these. Confirm them with the candidate directly.</p>
+                            <ul id="not-assessable-list"></ul>
+                        </details>
                     </div>
 
                     <!-- File Upload Zone -->
                     <div class="form-group">
-                        <label>Upload Candidates (PDF / DOCX / Images)</label>
+                        <label>Upload Candidates (PDF / DOCX / TXT / Images)</label>
                         <div id="drop-zone" class="drop-zone">
                             <i data-lucide="upload-cloud" class="upload-icon"></i>
                             <p class="upload-text">Drag & drop files here, or <span>browse files</span></p>
-                            <p class="upload-subtext">Supports PDF, DOCX, and Images (Max 5MB per file)</p>
-                            <input type="file" id="file-input" name="files" multiple accept=".pdf,.docx,.png,.jpg,.jpeg,.webp" style="display: none;">
+                            <p class="upload-subtext" id="upload-limits">Supports PDF, DOCX, TXT and images (max 10 files, 5 MB each)</p>
+                            <input type="file" id="file-input" name="files" multiple accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" style="display: none;">
                         </div>
                         <ul id="file-list" class="file-list"></ul>
+                        <p id="file-warning" class="form-warning" role="alert" style="display: none;"></p>
+                        <button type="button" id="sample-btn" class="secondary-btn sample-btn">
+                            <i data-lucide="flask-conical"></i>
+                            <span>Load sample job &amp; resumes</span>
+                        </button>
+                    </div>
+
+                    <!-- Access code (only shown when the server requires one) -->
+                    <div class="form-group" id="access-code-group" style="display: none;">
+                        <label for="access-code-input">Demo access code</label>
+                        <input type="password" id="access-code-input" class="text-input" autocomplete="off">
                     </div>
 
                     <!-- Action Button -->
@@ -95,7 +136,7 @@
                             <i data-lucide="folder-search"></i>
                         </div>
                         <h3>Ready to Match</h3>
-                        <p>Upload candidate resumes and paste job requirements on the left to run semantic scoring and AI diagnostics.</p>
+                        <p>Paste a job description and upload resumes on the left, or load the samples. Each resume gets a similarity score and an AI-written summary of strengths and gaps.</p>
                     </div>
 
                     <!-- 2. Loading State (Skeletons) -->
@@ -148,6 +189,8 @@
                             </div>
                             <pre id="jd-text-preview" class="jd-text-preview" style="display: none;"></pre>
                         </div>
+
+                        <div id="run-notice" class="run-notice" role="status" style="display: none;"></div>
 
                         <!-- Leaderboard Cards -->
                         <div id="results-leaderboard" class="results-leaderboard"></div>

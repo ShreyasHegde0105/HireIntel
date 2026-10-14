@@ -1,0 +1,16 @@
+# Render Blueprint: one free web service that serves both the API and the frontend.
+# Set GEMINI_API_KEY (and optionally DEMO_ACCESS_CODE) in the Render dashboard; never commit them.
+services:
+  - type: web
+    name: hireintel
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DEMO_ACCESS_CODE
+        sync: false
+      - key: DAILY_RESUME_BUDGET
+        value: "150"

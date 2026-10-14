@@ -1,0 +1,28 @@
+SYNTHETIC SAMPLE RESUME - fictional person created for the HireIntel demo
+
+Aarav Mehta
+Backend Engineer | Pune, India | aarav.mehta@example.com
+
+SUMMARY
+Backend engineer with 5 years of experience building Python APIs for fintech products.
+
+EXPERIENCE
+Senior Software Engineer - LedgerLoop Technologies (fictional), Pune
+Jan 2023 - Present
+- Built and maintain 30+ REST endpoints in FastAPI for a payments reconciliation product.
+- Designed PostgreSQL schemas for transaction ledgers; cut slow report queries from 9 s to 400 ms with indexing and query rewrites.
+- Introduced pytest-based integration tests; coverage rose from 35% to 80%.
+- Moved background reconciliation jobs to Celery with Redis.
+- Reviews pull requests and mentors two junior engineers.
+
+Software Engineer - ShopKart Online (fictional), Mumbai
+Jul 2021 - Dec 2022
+- Developed order and inventory services with Django REST Framework.
+- Containerised services with Docker and deployed them to AWS ECS.
+- Set up GitHub Actions pipelines for linting, tests and deployments.
+
+EDUCATION
+B.E. Computer Engineering, Savitribai Phule Pune University, 2021
+
+SKILLS
+Python, FastAPI, Django, PostgreSQL, SQL, pytest, Celery, Redis, Docker, AWS, Git, GitHub Actions

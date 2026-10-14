@@ -1,0 +1,21 @@
+SYNTHETIC SAMPLE RESUME - fictional person created for the HireIntel demo
+
+Rohan Kulkarni
+Data Analyst | Hyderabad, India | rohan.k@example.com
+
+SUMMARY
+Data analyst with 4 years of experience turning sales and marketing data into dashboards and insights.
+
+EXPERIENCE
+Data Analyst - RetailPulse Analytics (fictional), Hyderabad
+Mar 2021 - Present
+- Wrote complex SQL queries against PostgreSQL and BigQuery to build weekly sales reports.
+- Automated data cleaning with Python (pandas) scripts, saving 6 hours a week.
+- Built Power BI dashboards for regional sales managers.
+- Presented quarterly insights to leadership.
+
+EDUCATION
+B.Sc. Statistics, Osmania University, 2020
+
+SKILLS
+SQL, PostgreSQL, BigQuery, Python (pandas, matplotlib), Excel, Power BI

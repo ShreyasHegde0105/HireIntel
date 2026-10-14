@@ -1,0 +1,25 @@
+SYNTHETIC SAMPLE RESUME - fictional person created for the HireIntel demo
+
+Meera Iyer
+Full-Stack Developer | Chennai, India | meera.iyer@example.com
+
+PROFILE
+Full-stack developer with 3 years of experience, mostly React front ends with Node.js and some Python services.
+
+EXPERIENCE
+Software Developer - BrightDesk HR (fictional), Chennai
+Jun 2022 - Present
+- Built React and TypeScript dashboards used by 2,000 HR managers.
+- Wrote Node.js (Express) APIs backed by MongoDB.
+- Built two internal microservices in Flask for PDF report generation.
+- Wrote unit tests with Jest; added a few pytest tests for the Flask services.
+
+Intern - CodeNest Labs (fictional), Chennai
+Jan 2022 - May 2022
+- Fixed UI bugs in an Angular application.
+
+EDUCATION
+B.Tech Information Technology, Anna University, 2022
+
+SKILLS
+JavaScript, TypeScript, React, Node.js, Express, MongoDB, Python (Flask), MySQL (basic), Jest, Git
