@@ -50,7 +50,7 @@ Recruiters reviewing many resumes run into a few recurring problems that HireInt
 | Frontend | Vanilla HTML, CSS and JavaScript, served by the backend from the same origin |
 | Backend | FastAPI, Uvicorn, Python 3.12 |
 | AI | Google Gemini API via the `google-genai` SDK: `gemini-3.5-flash-lite` for analysis and OCR (falling back to `gemini-3.8-flash`), `gemini-embedding-2` (768 dimensions) for similarity |
-| Documents | `pypdfium2` and `pdfplumber` for PDFs, `python-docx` for DOCX |
+| Documents | `pypdfium2` and `pdfplumber` for PDFs, a defused `lxml` walk of the DOCX XML (body, tables, text boxes, content controls, headers and footers) |
 | Quality | pytest, ruff, GitHub Actions |
 
 Model IDs are configuration, not code (`app/config.py`), so a retired model can be replaced without a code change.
@@ -62,7 +62,7 @@ flowchart TD
     A[Browser] -->|POST /api/match: JD + resumes| B[FastAPI]
     B --> L[Rate limits and daily budget]
     B --> C[File validation by content type]
-    C --> D[Text extraction: pypdfium2, pdfplumber, python-docx]
+    C --> D[Text extraction: pypdfium2, pdfplumber, DOCX XML walk]
     D -->|no text layer| E[Gemini OCR, flagged as OCR]
     B --> F[gemini-embedding-2: JD and resume vectors]
     F --> G[Cosine similarity 0-100]
@@ -147,7 +147,7 @@ CI (`.github/workflows/ci.yml`) runs lint and tests on every push, then builds t
 - The similarity score is uncalibrated cosine similarity. Scores for related resumes often cluster closely (for example 65–80), so compare candidates within one run rather than reading the number as an absolute grade.
 - The analysis is a single LLM pass per resume and can miss or misread evidence. In requirement mode, quotes are checked against the extracted text, but they are not yet highlighted in the original document.
 - "No evidence found" covers both "not mentioned" and "the resume shows something different" (e.g. a B.Sc. against a required B.Tech); the note explains which.
-- DOCX text boxes are not read yet. Resumes laid out with text boxes may lose content.
+- DOCX footnotes, endnotes and comments are not read. Hidden (white or vanished) text is read like visible text; detecting it is planned.
 - Response time depends on Gemini. On the free tier the model is sometimes overloaded; affected resumes are then shown as `partial` with a warning.
 - No accounts, history or persistence. Re-running costs another round of API calls.
 
@@ -155,5 +155,4 @@ CI (`.github/workflows/ci.yml`) runs lint and tests on every push, then builds t
 
 - Show the original PDF beside the evidence, with verified quotes highlighted.
 - Let the recruiter override a requirement state, with a reason.
-- Read DOCX text boxes, headers and footers.
 - Build a small labelled evaluation set to measure how often requirement states agree with human reviewers.

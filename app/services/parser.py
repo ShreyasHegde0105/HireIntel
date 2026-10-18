@@ -3,7 +3,7 @@ import logging
 import re
 import zipfile
 
-from docx import Document
+from lxml import etree
 
 logger = logging.getLogger(__name__)
 
@@ -138,34 +138,187 @@ def parse_pdf(file_bytes: bytes) -> str:
     raise DocumentError("This PDF could not be opened. It may be corrupt or password-protected.")
 
 
-def parse_docx(file_bytes: bytes) -> str:
-    """Extracts text from a DOCX file: body paragraphs and tables.
+# --- DOCX ---------------------------------------------------------------------------------
+# python-docx does not read text boxes, content controls or headers in document order, so the
+# OOXML is walked directly. Resume templates put names, contact lines and whole sidebars in
+# text boxes and headers, and losing them silently makes a candidate look weaker than they are.
 
-    Known gap: text boxes are not read yet.
-    """
+_W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+_MC = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+_REL = "http://schemas.openxmlformats.org/package/2006/relationships"
+_R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+# Uncompressed size caps protect against zip bombs. A 5 MB upload never legitimately needs more.
+MAX_DOCX_PART_BYTES = 50 * 1024 * 1024
+MAX_DOCX_TOTAL_BYTES = 100 * 1024 * 1024
+
+# No DTDs, no entity expansion, no network: defends against XXE and entity-expansion attacks.
+_XML_PARSER = etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False)
+
+# Elements whose content is not visible text: properties, tracked deletions, moved-from text,
+# field codes (e.g. HYPERLINK "..."). The visible result of a field is kept.
+_SKIP = {f"{{{_W}}}{t}" for t in ("pPr", "rPr", "tblPr", "trPr", "tcPr", "sectPr", "del", "moveFrom", "delText", "instrText")}
+_TAB = {f"{{{_W}}}tab", f"{{{_W}}}ptab"}
+_BREAK = {f"{{{_W}}}br", f"{{{_W}}}cr"}
+
+
+def _w(tag: str) -> str:
+    return f"{{{_W}}}{tag}"
+
+
+def _chosen_branch(alternate):
+    """mc:AlternateContent holds the same object twice (modern drawing and a VML fallback).
+    Reading both would duplicate text-box text, so only the first branch is used."""
+    for branch in alternate:
+        if branch.tag in (f"{{{_MC}}}Choice", f"{{{_MC}}}Fallback"):
+            return branch
+    return None
+
+
+def _inline(el, parts: list, boxes: list) -> None:
+    """Collects the visible text of a paragraph. Text boxes found inside it are set aside."""
+    for child in el:
+        tag = child.tag
+        if tag in _SKIP:
+            continue
+        if tag == _w("t"):
+            parts.append(child.text or "")
+        elif tag in _TAB:
+            parts.append("\t")
+        elif tag in _BREAK:
+            parts.append("\n")
+        elif tag == _w("noBreakHyphen"):
+            parts.append("-")
+        elif tag == _w("txbxContent"):
+            boxes.append(child)
+        elif tag == f"{{{_MC}}}AlternateContent":
+            branch = _chosen_branch(child)
+            if branch is not None:
+                _inline(branch, parts, boxes)
+        else:
+            _inline(child, parts, boxes)
+
+
+def _paragraph(p, out: list) -> None:
+    parts, boxes = [], []
+    _inline(p, parts, boxes)
+    line = "".join(parts).strip()
+    if line:
+        out.append(line)
+    # A text box is anchored to a paragraph; its text is read right after the host paragraph.
+    for box in boxes:
+        _blocks(box, out)
+
+
+def _children(el, tag: str):
+    """Direct children with this tag, including ones wrapped in content controls (w:sdt)."""
+    for child in el:
+        if child.tag == tag:
+            yield child
+        elif child.tag in (_w("sdt"), _w("sdtContent"), _w("customXml")):
+            yield from _children(child, tag)
+
+
+def _table(tbl, out: list) -> None:
+    for row in _children(tbl, _w("tr")):
+        cells = []
+        for cell in _children(row, _w("tc")):
+            lines = []
+            _blocks(cell, lines)
+            if lines:
+                cells.append(lines)
+        if not cells:
+            continue
+        if all(len(lines) == 1 and "\n" not in lines[0] for lines in cells):
+            out.append(" | ".join(lines[0] for lines in cells))  # a data row: keep it on one line
+        else:
+            for lines in cells:  # a layout row (e.g. a sidebar column): read each cell in turn
+                out.extend(lines)
+
+
+def _blocks(el, out: list) -> None:
+    """Reads block-level content (paragraphs, tables, content controls) in document order."""
+    for child in el:
+        tag = child.tag
+        if tag == _w("p"):
+            _paragraph(child, out)
+        elif tag == _w("tbl"):
+            _table(child, out)
+        elif tag == f"{{{_MC}}}AlternateContent":
+            branch = _chosen_branch(child)
+            if branch is not None:
+                _blocks(branch, out)
+        elif tag in _SKIP:
+            continue
+        elif tag in (_w("sdt"), _w("sdtContent"), _w("customXml"), _w("ins"), _w("moveTo"), _w("smartTag")):
+            _blocks(child, out)
+
+
+class _DocxPackage:
+    def __init__(self, file_bytes: bytes):
+        self._zip = zipfile.ZipFile(io.BytesIO(file_bytes))
+        self._read_total = 0
+
+    def xml(self, name: str):
+        info = self._zip.getinfo(name)
+        self._read_total += info.file_size
+        if info.file_size > MAX_DOCX_PART_BYTES or self._read_total > MAX_DOCX_TOTAL_BYTES:
+            raise DocumentError("This DOCX file is too large once uncompressed.")
+        return etree.fromstring(self._zip.read(name), _XML_PARSER)
+
+    def has(self, name: str) -> bool:
+        return name in self._zip.namelist()
+
+
+def _header_footer_parts(pkg: _DocxPackage, document) -> tuple:
+    """Header and footer part names, in the order the sections reference them."""
+    targets = {}
+    rels_name = "word/_rels/document.xml.rels"
+    if pkg.has(rels_name):
+        for rel in pkg.xml(rels_name).iter(f"{{{_REL}}}Relationship"):
+            target = rel.get("Target", "")
+            if rel.get("TargetMode") != "External" and not target.startswith("/"):
+                targets[rel.get("Id")] = "word/" + target
+    headers, footers = [], []
+    for kind, names in (("headerReference", headers), ("footerReference", footers)):
+        for ref in document.iter(_w(kind)):
+            name = targets.get(ref.get(f"{{{_R}}}id"))
+            if name and name not in names and pkg.has(name):
+                names.append(name)
+    return headers, footers
+
+
+def _read_parts(pkg: _DocxPackage, names: list) -> list:
+    """Reads headers or footers. The default, first-page and even-page variants usually repeat
+    the same contact line, so a line already read from an earlier variant is not added again."""
+    lines = []
+    for name in names:
+        part_lines = []
+        _blocks(pkg.xml(name), part_lines)
+        lines.extend(line for line in part_lines if line not in lines)
+    return lines
+
+
+def parse_docx(file_bytes: bytes) -> str:
+    """Extracts the visible text of a DOCX file: headers, then the body (paragraphs, tables,
+    text boxes and content controls in document order), then footers. Each text appears once."""
     try:
-        doc = Document(io.BytesIO(file_bytes))
-    except Exception:
+        pkg = _DocxPackage(file_bytes)
+        document = pkg.xml("word/document.xml")
+        body = document.find(_w("body"))
+        if body is None:
+            raise DocumentError("This DOCX file could not be opened. It may be corrupt.")
+        headers, footers = _header_footer_parts(pkg, document)
+        body_lines = []
+        _blocks(body, body_lines)
+        lines = _read_parts(pkg, headers) + body_lines + _read_parts(pkg, footers)
+    except DocumentError:
+        raise
+    except Exception as e:
+        logger.info("docx could not be opened", extra={"error": type(e).__name__})
         raise DocumentError("This DOCX file could not be opened. It may be corrupt.") from None
 
-    text_content = []
-    for paragraph in doc.paragraphs:
-        clean_p = paragraph.text.strip()
-        if clean_p:
-            text_content.append(clean_p)
-
-    # Tables are often used for resume layout
-    for table in doc.tables:
-        for row in table.rows:
-            row_text = []
-            for cell in row.cells:
-                cell_text = cell.text.strip()
-                if cell_text and cell_text not in row_text:
-                    row_text.append(cell_text)
-            if row_text:
-                text_content.append(" | ".join(row_text))
-
-    return "\n".join(text_content).strip()
+    return "\n".join(lines).strip()
 
 
 def extract_text(file_bytes: bytes, file_format: str) -> str:

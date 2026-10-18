@@ -1,5 +1,6 @@
 import io
 import os
+import zipfile
 
 # Settings are read at import time, so set test values before importing the app.
 os.environ["GEMINI_API_KEY"] = "test-key"
@@ -87,6 +88,67 @@ def make_docx(text: str) -> bytes:
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
+
+
+_DOCX_NS = (
+    'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
+    'xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" '
+    'xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" '
+    'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" '
+    'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+    'xmlns:v="urn:schemas-microsoft-com:vml"'
+)
+
+
+def make_raw_docx(body: str, headers: dict = None, footers: dict = None, sect: str = None) -> bytes:
+    """Builds a DOCX from raw WordprocessingML, for markup python-docx cannot write (text boxes,
+    content controls, tracked changes). headers/footers map a part name to its inner XML; each is
+    referenced from the section properties in the order given unless `sect` overrides them."""
+    headers, footers = headers or {}, footers or {}
+    rels, refs = [], []
+    for i, (kind, parts) in enumerate((("header", headers), ("footer", footers))):
+        for j, name in enumerate(parts):
+            rid = f"rId{i * 100 + j + 1}"
+            rel_type = f"http://schemas.openxmlformats.org/officeDocument/2006/relationships/{kind}"
+            rels.append(f'<Relationship Id="{rid}" Type="{rel_type}" Target="{name}"/>')
+            refs.append(f'<w:{kind}Reference w:type="default" r:id="{rid}"/>')
+    sect = sect if sect is not None else f"<w:sectPr>{''.join(refs)}</w:sectPr>"
+    files = {
+        "[Content_Types].xml": '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="xml" ContentType="application/xml"/></Types>',
+        "word/document.xml": f'<?xml version="1.0"?><w:document {_DOCX_NS}><w:body>{body}{sect}</w:body></w:document>',
+        "word/_rels/document.xml.rels": '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        + "".join(rels)
+        + "</Relationships>",
+    }
+    for name, xml in headers.items():
+        files[f"word/{name}"] = f'<?xml version="1.0"?><w:hdr {_DOCX_NS}>{xml}</w:hdr>'
+    for name, xml in footers.items():
+        files[f"word/{name}"] = f'<?xml version="1.0"?><w:ftr {_DOCX_NS}>{xml}</w:ftr>'
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, content in files.items():
+            zf.writestr(name, content)
+    return buf.getvalue()
+
+
+def p(text: str) -> str:
+    """One WordprocessingML paragraph with a single run."""
+    return f"<w:p><w:r><w:t xml:space=\"preserve\">{text}</w:t></w:r></w:p>"
+
+
+def text_box(*paragraphs: str) -> str:
+    """A paragraph anchoring a text box, written the way Word writes it: a modern drawing plus a
+    VML fallback that repeats the same text."""
+    inner = "".join(paragraphs)
+    return (
+        "<w:p><w:r><mc:AlternateContent>"
+        f"<mc:Choice Requires=\"wps\"><w:drawing><wp:anchor><a:graphic><a:graphicData><wps:wsp><wps:txbx><w:txbxContent>{inner}"
+        "</w:txbxContent></wps:txbx></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing></mc:Choice>"
+        f"<mc:Fallback><w:pict><v:shape><v:textbox><w:txbxContent>{inner}</w:txbxContent></v:textbox></v:shape></w:pict></mc:Fallback>"
+        "</mc:AlternateContent></w:r></w:p>"
+    )
 
 
 def make_pdf(text: str = "") -> bytes:
