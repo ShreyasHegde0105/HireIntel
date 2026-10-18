@@ -8,7 +8,7 @@ the text HireIntel extracted from the resume.
 import re
 import unicodedata
 from datetime import datetime
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 from google.genai import types
 from pydantic import BaseModel, Field
@@ -155,28 +155,58 @@ BANDS = {
 BAND_ORDER = {"B1": 0, "B0": 0, "B2": 1, "B3": 2, "B4": 3}
 
 
+_CHAR_MAP = str.maketrans(
+    {**{c: "-" for c in "‐‑‒–—―−"}, **{c: "'" for c in "‘’‚‛"}, **{c: '"' for c in "“”„‟"}, **{c: " " for c in "•▪●◦·|"}}
+)
+
+
+def _normalise_with_map(text: str) -> tuple:
+    """Case-, dash-, quote- and whitespace-insensitive form of the text, plus, for each character
+    of it, the index of the original character it came from. The map lets a quote found in the
+    normalised text be highlighted in the original."""
+    out, origin = [], []
+    pending_space = False
+    for i, char in enumerate(text):
+        for c in unicodedata.normalize("NFKC", char).lower().translate(_CHAR_MAP):
+            if c.isspace():
+                pending_space = bool(out)
+                continue
+            if pending_space:
+                out.append(" ")
+                origin.append(i - 1)
+                pending_space = False
+            out.append(c)
+            origin.append(i)
+    return "".join(out), origin
+
+
 def _normalise(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text).lower()
-    text = re.sub("[‐-―−]", "-", text)
-    text = re.sub("[‘’‚‛]", "'", text)
-    text = re.sub("[“”„‟]", '"', text)
-    text = re.sub(r"[•▪●◦·|]", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
+    return _normalise_with_map(text)[0]
+
+
+def locate_quote(quote: str, normalised_text: str, origin: Optional[list] = None) -> Optional[List[List[int]]]:
+    """Finds every fragment of the quote (split on ellipses) in the text, in order.
+
+    Returns None if the quote is not in the text. Otherwise returns one [start, end) span per
+    fragment, as offsets into the original text when `origin` is given.
+    """
+    fragments = [f.strip(" .,;:") for f in re.split(r"\.\.\.|…", _normalise(quote))]
+    fragments = [f for f in fragments if f]
+    if not fragments or sum(len(f) for f in fragments) < 3:
+        return None
+    spans, position = [], 0
+    for fragment in fragments:
+        found = normalised_text.find(fragment, position)
+        if found < 0:
+            return None
+        position = found + len(fragment)
+        spans.append([origin[found], origin[position - 1] + 1] if origin else [found, position])
+    return spans
 
 
 def quote_in_text(quote: str, normalised_text: str) -> bool:
     """True if every fragment of the quote (split on ellipses) appears in the text, in order."""
-    fragments = [f.strip(" .,;:") for f in re.split(r"\.\.\.|…", _normalise(quote))]
-    fragments = [f for f in fragments if f]
-    if not fragments or sum(len(f) for f in fragments) < 3:
-        return False
-    position = 0
-    for fragment in fragments:
-        found = normalised_text.find(fragment, position)
-        if found < 0:
-            return False
-        position = found + len(fragment)
-    return True
+    return locate_quote(quote, normalised_text) is not None
 
 
 def _band(requirements: List[dict]) -> str:
@@ -220,7 +250,7 @@ async def assess_resume(resume_text: str, requirements: List[dict]) -> dict:
         raise AIUnavailableError("AI requirement assessment returned an invalid response.") from None
 
     verdicts = {v.requirement_id.strip().upper(): v for v in assessment.verdicts}
-    normalised_resume = _normalise(resume_text)
+    normalised_resume, origin = _normalise_with_map(resume_text)
     results = []
     for req in requirements:
         verdict = verdicts.get(req["id"])
@@ -228,7 +258,12 @@ async def assess_resume(resume_text: str, requirements: List[dict]) -> dict:
             results.append({**req, "state": NEEDS_REVIEW, "quotes": [], "note": "The AI did not assess this requirement."})
             continue
 
-        quotes = [{"text": q.strip(), "verified": quote_in_text(q, normalised_resume)} for q in verdict.quotes[:2] if q.strip()]
+        quotes = []
+        for q in verdict.quotes[:2]:
+            if q.strip():
+                # spans: where the quote is in the resume text, for highlighting; [] if not found
+                spans = locate_quote(q, normalised_resume, origin)
+                quotes.append({"text": q.strip(), "verified": spans is not None, "spans": spans or []})
         note = verdict.note.strip()
         if verdict.verdict == "met":
             if any(q["verified"] for q in quotes):

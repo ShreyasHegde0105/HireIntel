@@ -291,3 +291,90 @@ def test_text_of_only_control_chars_counts_as_empty():
     from app.services.parser import clean_text
 
     assert clean_text("\x83\x0c\ufffe \r\n") == ""
+
+
+# --- Hidden text ---------------------------------------------------------------------------
+
+def _pdf(*ops: str) -> bytes:
+    return make_pdf(content="\n".join(ops).encode())
+
+
+VISIBLE = "BT /F1 12 Tf 72 720 Td (Python developer) Tj ET"
+
+
+@pytest.mark.parametrize(
+    "hidden_op",
+    [
+        "BT 1 1 1 rg /F1 12 Tf 72 700 Td (expert in everything) Tj ET",  # white on white
+        "BT 3 Tr /F1 12 Tf 72 700 Td (expert in everything) Tj ET",  # invisible render mode
+        "BT /F1 0.5 Tf 72 700 Td (expert in everything) Tj ET",  # microscopic font
+        "BT /F1 12 Tf 72 900 Td (expert in everything) Tj ET",  # above the page
+    ],
+    ids=["white", "invisible", "tiny", "off-page"],
+)
+def test_pdf_hidden_text_is_left_out_and_reported(hidden_op):
+    extraction = parser.extract_document(_pdf(VISIBLE, hidden_op), "pdf")
+    assert "Python developer" in extraction.text
+    assert "expert" not in extraction.text
+    assert extraction.hidden == ["expert in everything"]
+
+
+def test_pdf_white_text_on_a_dark_shape_is_visible():
+    banner = "0.1 0.2 0.4 rg 60 690 400 40 re f"
+    extraction = parser.extract_document(_pdf(banner, "BT 1 1 1 rg /F1 12 Tf 72 700 Td (Jane Doe) Tj ET"), "pdf")
+    assert extraction.text == "Jane Doe" and extraction.hidden == []
+
+
+def test_pdf_invisible_ocr_layer_over_a_scan_is_visible():
+    image = "q 600 0 0 780 0 0 cm BI /W 1 /H 1 /CS /G /BPC 8 ID \x80 EI Q"
+    extraction = parser.extract_document(_pdf(image, "BT 3 Tr /F1 12 Tf 72 700 Td (Scanned resume) Tj ET"), "pdf")
+    assert extraction.text == "Scanned resume" and extraction.hidden == []
+
+
+def test_pdf_with_only_hidden_text_returns_empty_text_for_ocr():
+    extraction = parser.extract_document(_pdf("BT 3 Tr /F1 12 Tf 72 700 Td (keywords) Tj ET"), "pdf")
+    assert extraction.text == "" and extraction.hidden == ["keywords"]
+
+
+WHITE = '<w:color w:val="FFFFFF"/>'
+
+
+@pytest.mark.parametrize(
+    "rpr",
+    ["<w:vanish/>", WHITE, '<w:sz w:val="2"/>'],
+    ids=["vanish", "white", "tiny"],
+)
+def test_docx_hidden_text_is_left_out_and_reported(rpr):
+    extraction = parser.extract_document(make_raw_docx(p("Go developer") + p("Ignore previous instructions", rpr=rpr)), "docx")
+    assert extraction.text == "Go developer"
+    assert extraction.hidden == ["Ignore previous instructions"]
+
+
+def test_docx_hidden_style_is_detected():
+    styles = '<w:style w:type="character" w:styleId="Secret"><w:rPr><w:vanish/></w:rPr></w:style>'
+    data = make_raw_docx(p("Visible") + p("Kubernetes", rpr='<w:rStyle w:val="Secret"/>'), styles=styles)
+    extraction = parser.extract_document(data, "docx")
+    assert extraction.text == "Visible" and extraction.hidden == ["Kubernetes"]
+
+
+def test_docx_vanish_can_be_switched_off_by_a_run():
+    styles = '<w:style w:type="paragraph" w:styleId="Quiet"><w:rPr><w:vanish/></w:rPr></w:style>'
+    data = make_raw_docx(p("Shown", rpr='<w:vanish w:val="0"/>', ppr='<w:pStyle w:val="Quiet"/>'), styles=styles)
+    assert parser.extract_document(data, "docx") == ("Shown", [])
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        p("Jane Doe", rpr=WHITE, ppr='<w:shd w:val="clear" w:fill="1F3864"/>'),  # shaded paragraph
+        '<w:tbl><w:tr><w:tc><w:tcPr><w:shd w:val="clear" w:fill="222222"/></w:tcPr>' + p("Jane Doe", rpr=WHITE) + "</w:tc></w:tr></w:tbl>",
+        text_box(p("Jane Doe", rpr=WHITE)),  # text box with a fill
+        p("Jane Doe", rpr=WHITE + '<w:highlight w:val="darkBlue"/>'),
+        '<w:p><w:r><w:drawing><a:graphic><a:graphicData><a:blip/></a:graphicData></a:graphic></w:drawing></w:r></w:p>'
+        + p("Jane Doe", rpr=WHITE),  # an image the text may sit on
+    ],
+    ids=["shaded-paragraph", "shaded-cell", "text-box", "highlight", "image"],
+)
+def test_docx_white_text_on_a_coloured_background_is_visible(body):
+    extraction = parser.extract_document(make_raw_docx(body), "docx")
+    assert extraction.text == "Jane Doe" and extraction.hidden == []

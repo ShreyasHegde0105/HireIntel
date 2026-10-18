@@ -101,7 +101,7 @@ _DOCX_NS = (
 )
 
 
-def make_raw_docx(body: str, headers: dict = None, footers: dict = None, sect: str = None) -> bytes:
+def make_raw_docx(body: str, headers: dict = None, footers: dict = None, sect: str = None, styles: str = None) -> bytes:
     """Builds a DOCX from raw WordprocessingML, for markup python-docx cannot write (text boxes,
     content controls, tracked changes). headers/footers map a part name to its inner XML; each is
     referenced from the section properties in the order given unless `sect` overrides them."""
@@ -122,6 +122,8 @@ def make_raw_docx(body: str, headers: dict = None, footers: dict = None, sect: s
         + "".join(rels)
         + "</Relationships>",
     }
+    if styles is not None:
+        files["word/styles.xml"] = f'<?xml version="1.0"?><w:styles {_DOCX_NS}>{styles}</w:styles>'
     for name, xml in headers.items():
         files[f"word/{name}"] = f'<?xml version="1.0"?><w:hdr {_DOCX_NS}>{xml}</w:hdr>'
     for name, xml in footers.items():
@@ -133,9 +135,11 @@ def make_raw_docx(body: str, headers: dict = None, footers: dict = None, sect: s
     return buf.getvalue()
 
 
-def p(text: str) -> str:
-    """One WordprocessingML paragraph with a single run."""
-    return f"<w:p><w:r><w:t xml:space=\"preserve\">{text}</w:t></w:r></w:p>"
+def p(text: str, rpr: str = "", ppr: str = "") -> str:
+    """One WordprocessingML paragraph with a single run, optionally with run/paragraph properties."""
+    ppr = f"<w:pPr>{ppr}</w:pPr>" if ppr else ""
+    rpr = f"<w:rPr>{rpr}</w:rPr>" if rpr else ""
+    return f"<w:p>{ppr}<w:r>{rpr}<w:t xml:space=\"preserve\">{text}</w:t></w:r></w:p>"
 
 
 def text_box(*paragraphs: str) -> str:
@@ -151,9 +155,11 @@ def text_box(*paragraphs: str) -> str:
     )
 
 
-def make_pdf(text: str = "") -> bytes:
-    """Builds a minimal one-page PDF. With no text it behaves like a scan (no text layer)."""
-    content = f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode() if text else b""
+def make_pdf(text: str = "", content: bytes = None) -> bytes:
+    """Builds a minimal one-page PDF. With no text it behaves like a scan (no text layer).
+    `content` replaces the page's content stream, for tests that need colours or render modes."""
+    if content is None:
+        content = f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode() if text else b""
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",

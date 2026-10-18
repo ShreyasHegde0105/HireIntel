@@ -11,7 +11,7 @@ from app.config import settings
 from app.services.gemini_service import AIUnavailableError, analyze_resume_fit, generate_jd_from_title, ocr_document
 from app.services.limits import LimitExceeded, limiter
 from app.services.matcher import EmbeddingUnavailableError, cosine_similarity_score, embed_job_description, embed_resume
-from app.services.parser import IMAGE_MIME_TYPES, DocumentError, clean_text, detect_format, extract_text
+from app.services.parser import IMAGE_MIME_TYPES, DocumentError, clean_text, detect_format, extract_document
 from app.services.requirements import assess_resume, extract_requirements, requirement_sort_key, validate_requirements
 
 logger = logging.getLogger(__name__)
@@ -24,13 +24,18 @@ SHORT_JD_THRESHOLD = 50
 # Limit concurrent resume pipelines to keep memory and provider bursts low
 CONCURRENCY_LIMIT = 4
 _semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
+# Hidden text returned to the recruiter, so the response stays small
+MAX_HIDDEN_SNIPPETS = 5
+MAX_HIDDEN_SNIPPET_CHARS = 300
 
 
 async def _read_text(file_bytes: bytes, file_format: str) -> dict:
-    """Returns {"text", "method", "truncated"}. Raises DocumentError or AIUnavailableError."""
-    raw_text = clean_text(await asyncio.to_thread(extract_text, file_bytes, file_format))
+    """Returns {"text", "method", "truncated", "hidden"}. Raises DocumentError or AIUnavailableError."""
+    document = await asyncio.to_thread(extract_document, file_bytes, file_format)
+    raw_text = clean_text(document.text)
+    hidden = [h for h in (clean_text(h) for h in document.hidden) if h]
     if raw_text:
-        return {"text": raw_text, "method": "text", "truncated": False}
+        return {"text": raw_text, "method": "text", "truncated": False, "hidden": hidden}
 
     if file_format == "pdf" or file_format in IMAGE_MIME_TYPES:
         mime_type = "application/pdf" if file_format == "pdf" else IMAGE_MIME_TYPES[file_format]
@@ -42,7 +47,8 @@ async def _read_text(file_bytes: bytes, file_format: str) -> dict:
             ) from None
         ocr_text = clean_text(ocr["text"])
         if ocr_text:
-            return {"text": ocr_text, "method": "ocr", "truncated": ocr["truncated"]}
+            # OCR reads what is visible on the page, so hidden text found earlier stays out.
+            return {"text": ocr_text, "method": "ocr", "truncated": ocr["truncated"], "hidden": hidden}
 
     raise DocumentError("No readable text was found in this document.")
 
@@ -87,6 +93,13 @@ async def process_single_resume(
                 warnings.append("Text was read with AI text recognition (OCR) and may contain errors.")
             if extraction["truncated"]:
                 warnings.append("Text recognition hit its output limit; later parts of the document may be missing.")
+            hidden = extraction["hidden"]
+            if hidden:
+                warnings.append(
+                    "This file contains text a reader cannot see (hidden, white, tiny or off-page). It was left out "
+                    "of the analysis. Hidden text is sometimes used to game screening tools; check the original file."
+                )
+                logger.info("hidden text left out", extra={"snippets": len(hidden), "chars": sum(len(h) for h in hidden)})
 
             if isinstance(score_result, EmbeddingUnavailableError):
                 similarity_score = None
@@ -115,6 +128,8 @@ async def process_single_resume(
                 ("assessment" if requirements else "analysis"): analysis,
                 "extraction_method": extraction["method"],
                 "warnings": warnings,
+                "hidden_text": [h[:MAX_HIDDEN_SNIPPET_CHARS] for h in hidden[:MAX_HIDDEN_SNIPPETS]],
+                "hidden_text_count": len(hidden),
                 "raw_text": raw_text,
             }
 

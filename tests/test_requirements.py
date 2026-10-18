@@ -57,6 +57,43 @@ def test_quote_verification_handles_typographic_dashes():
     assert req.quote_in_text("Sep 2023 - Present", text)
 
 
+def _highlight(quote: str, text: str) -> list:
+    normalised, origin = req._normalise_with_map(text)
+    return [text[start:end] for start, end in req.locate_quote(quote, normalised, origin)]
+
+
+@pytest.mark.parametrize(
+    "text, quote, expected",
+    [
+        ("Jane Doe\nBuilt REST APIs on PostgreSQL.", "built REST APIs", ["Built REST APIs"]),
+        ("Led   the\n  migration to AWS", "led the migration to AWS", ["Led   the\n  migration to AWS"]),
+        ("Sep 2023 – Present", "Sep 2023 - Present", ["Sep 2023 – Present"]),
+        ("Ofﬁce automation with Python", "office automation", ["Ofﬁce automation"]),  # NFKC ligature
+        ("Python • FastAPI • Docker", "Python FastAPI", ["Python • FastAPI"]),
+        ("Built APIs in Go. Later moved to Rust services.", "Built APIs ... Rust services", ["Built APIs", "Rust services"]),
+    ],
+)
+def test_quote_spans_point_at_the_original_text(text, quote, expected):
+    assert _highlight(quote, text) == expected
+
+
+def test_quote_not_in_text_has_no_spans():
+    normalised, origin = req._normalise_with_map("Built REST APIs")
+    assert req.locate_quote("Built GraphQL APIs", normalised, origin) is None
+
+
+def test_assessment_returns_spans_into_the_resume_text(fake_ai):
+    fake_ai.generate_behaviour = lambda m, c, cfg: _assessment([
+        _verdict("R1", "met", ["4 years of Python and FastAPI"]),
+        _verdict("R2", "unclear", ["REST APIs"]),
+        _verdict("R3", "not_found"),
+    ])
+    result = asyncio.run(req.assess_resume(RESUME_TEXT, CONFIRMED))
+    quote = result["requirements"][0]["quotes"][0]
+    (start, end), = quote["spans"]
+    assert RESUME_TEXT[start:end] == "4 years of Python and FastAPI"
+
+
 # --- Assessment states and bands ---
 
 def test_met_with_verified_quote_is_supported(fake_ai):
@@ -79,7 +116,7 @@ def test_invented_quote_is_downgraded_to_needs_review(fake_ai):
     result = asyncio.run(req.assess_resume(RESUME_TEXT, CONFIRMED))
     r2 = result["requirements"][1]
     assert r2["state"] == "needs_review"
-    assert r2["quotes"] == [{"text": "Expert PostgreSQL DBA for 8 years", "verified": False}]
+    assert r2["quotes"] == [{"text": "Expert PostgreSQL DBA for 8 years", "verified": False, "spans": []}]
     assert "could not be found" in r2["note"]
     assert result["band"]["code"] == "B2"
 
