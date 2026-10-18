@@ -192,6 +192,18 @@
 
                         <div id="run-notice" class="run-notice" role="status" style="display: none;"></div>
 
+                        <!-- Review toolbar (requirement mode) -->
+                        <div id="review-toolbar" class="review-toolbar" style="display: none;">
+                            <span id="review-summary" class="review-summary" role="status"></span>
+                            <div class="review-toolbar-actions">
+                                <button type="button" id="regroup-btn" class="secondary-btn" style="display: none;"></button>
+                                <button type="button" id="export-btn" class="secondary-btn">
+                                    <i data-lucide="download"></i>
+                                    <span>Export review (CSV)</span>
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Leaderboard Cards -->
                         <div id="results-leaderboard" class="results-leaderboard"></div>
                     </div>
@@ -199,6 +211,41 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Evidence review: requirements beside the extracted text -->
+    <div id="review-overlay" class="review-overlay" hidden>
+        <div class="review-dialog" role="dialog" aria-modal="true" aria-labelledby="review-title">
+            <header class="review-header">
+                <div class="review-heading">
+                    <h2 id="review-title"></h2>
+                    <p id="review-band" class="review-band"></p>
+                </div>
+                <div class="review-actions">
+                    <button type="button" id="review-open-original" class="secondary-btn">
+                        <i data-lucide="external-link"></i>
+                        <span>Open original file</span>
+                    </button>
+                    <button type="button" id="review-close" class="file-remove-btn review-close" aria-label="Close review">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+            </header>
+            <div class="review-body">
+                <section class="review-reqs" aria-label="Requirements">
+                    <p class="review-hint">Changes you make here stay in this browser tab. Export the review to keep them.</p>
+                    <ul id="review-req-list" class="req-results"></ul>
+                </section>
+                <section class="review-doc" aria-label="Extracted resume text">
+                    <div class="review-doc-head">
+                        <i data-lucide="file-search"></i>
+                        <span>Extracted text. Highlights are quotes found in it; click one to see its requirement.</span>
+                    </div>
+                    <div id="review-hidden"></div>
+                    <pre id="review-doc-text" class="review-doc-text"></pre>
+                </section>
+            </div>
+        </div>
     </div>
 
     <!-- App Logic -->

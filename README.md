@@ -21,6 +21,10 @@ Click **Extract requirements to check** after pasting a job description:
 
 A verified quote proves the words exist in the resume. It doesn't prove the AI interpreted them correctly, so the quotes are shown for you to judge.
 
+5. **Review evidence** opens a candidate's requirements beside the extracted text, with every verified quote highlighted. Click a quote to jump to it in the text, or a highlight to find its requirement. **Open original file** shows the file you uploaded, straight from your browser.
+6. You can change any requirement's state. A reason is required (and a note, for "Other"). The band is recalculated with the same rules, the card shows the change (e.g. `B3 → B2`), and **Group by reviewed bands** reorders the list.
+7. **Export review (CSV)** saves every requirement with the AI's state, your final state, the reason and the verified quotes. Review changes stay in the browser tab only, so export them before closing or running again. The page warns you if you haven't.
+
 > **This is a portfolio demo, not a hiring tool.** Results are suggestions for a human reviewer. The similarity score is not a probability of fit, and the AI analysis can be wrong. HireIntel never rejects anyone automatically.
 
 ---
@@ -40,6 +44,7 @@ Recruiters reviewing many resumes run into a few recurring problems that HireInt
 - **"No evidence found" is not "lacks the skill".** Gaps are worded as missing evidence in the resume text.
 - **Resume text is treated as data.** The text is fenced off in the prompt, and the model is told to ignore and report any instructions hidden in a resume. The sample `kavya_python_intern.txt` contains such an instruction so you can see this in action.
 - **Honest limits.** Long resumes that had to be cut, and OCR output that hit its length limit, are flagged.
+- **Hidden text is set aside, not trusted.** Text a reader can't see (Word's hidden text, white text with nothing coloured behind it, microscopic fonts, text off the page) is left out of the analysis and listed on the candidate's card, because hidden keywords and instructions are a known way to game screening tools. White text on a coloured sidebar, banner or text box counts as visible.
 
 ---
 
@@ -149,14 +154,16 @@ CI (`.github/workflows/ci.yml`) runs lint and tests on every push, then builds t
 ## ⚠️ Known limitations
 
 - The similarity score is uncalibrated cosine similarity. Scores for related resumes often cluster closely (for example 65–80), so compare candidates within one run rather than reading the number as an absolute grade.
-- The analysis is a single LLM pass per resume and can miss or misread evidence. In requirement mode, quotes are checked against the extracted text, but they are not yet highlighted in the original document.
+- The analysis is a single LLM pass per resume and can miss or misread evidence. Quotes are checked and highlighted in the extracted text, not drawn on the original PDF.
+- Review changes are not saved on the server. They live in the browser tab until you export them.
 - "No evidence found" covers both "not mentioned" and "the resume shows something different" (e.g. a B.Sc. against a required B.Tech); the note explains which.
-- DOCX footnotes, endnotes and comments are not read. Hidden (white or vanished) text is read like visible text; detecting it is planned.
+- DOCX footnotes, endnotes and comments are not read.
+- Hidden-text detection is heuristic. White text over a colour that is set by a table style or theme can still be read as visible, and some designs with white text and no detectable background may be flagged; the card lists anything left out so you can check.
 - Response time depends on Gemini. On the free tier the model is sometimes overloaded; affected resumes are then shown as `partial` with a warning.
 - No accounts, history or persistence. Re-running costs another round of API calls.
 
 ## 🗺️ Next steps
 
-- Show the original PDF beside the evidence, with verified quotes highlighted.
-- Let the recruiter override a requirement state, with a reason.
+- Save reviews on the server (Postgres) so they survive a reload and can be audited.
+- Tighten the assessment prompt after reviewers settle the skills-list rule; it currently counts mobile years as web frontend experience.
 - Get two reviewers to label the evaluation set in `evaluation/` so requirement states can be measured against humans, not just against the cases' design.

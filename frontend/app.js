@@ -37,9 +37,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const runNotice = document.getElementById("run-notice");
     const resultsLeaderboard = document.getElementById("results-leaderboard");
     const resultsHeaderText = document.getElementById("results-header-text");
+    const reviewToolbar = document.getElementById("review-toolbar");
+    const reviewSummary = document.getElementById("review-summary");
+    const regroupBtn = document.getElementById("regroup-btn");
+    const exportBtn = document.getElementById("export-btn");
+
+    // Evidence review panel
+    const reviewOverlay = document.getElementById("review-overlay");
+    const reviewTitle = document.getElementById("review-title");
+    const reviewBand = document.getElementById("review-band");
+    const reviewOpenOriginal = document.getElementById("review-open-original");
+    const reviewClose = document.getElementById("review-close");
+    const reviewReqList = document.getElementById("review-req-list");
+    const reviewHidden = document.getElementById("review-hidden");
+    const reviewDocText = document.getElementById("review-doc-text");
 
     // Local file cache
     let selectedFiles = [];
+    let discardArmed = false;
     // Recruiter-confirmed requirements; empty means similarity-only mode
     let requirements = [];
     const MAX_REQUIREMENTS = 15;
@@ -378,7 +393,15 @@ document.addEventListener("DOMContentLoaded", () => {
         const confirmed = requirements
             .map(r => ({ text: r.text.trim(), importance: r.importance }))
             .filter(r => r.text);
+        // A new run replaces the current review, so never discard unexported changes silently.
+        if (unexportedChanges && !discardArmed) {
+            discardArmed = true;
+            showFileWarning("Your review changes have not been exported. Export them first, or press Analyze again to discard them.");
+            return;
+        }
+        discardArmed = false;
         showFileWarning("");
+        const filesForRun = new Map(selectedFiles.map(file => [file.name, file]));
 
         const formData = new FormData();
         formData.append("job_description", jdText);
@@ -409,6 +432,10 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const data = await response.json();
+            submittedFiles = filesForRun;
+            overrides = new Map();
+            groupByReviewed = false;
+            unexportedChanges = false;
             renderResults(data);
             switchState("active");
             setStatus("online", "Server online");
@@ -517,9 +544,92 @@ document.addEventListener("DOMContentLoaded", () => {
         no_evidence: { icon: "circle-minus", label: "No evidence found", cls: "state-none" },
     };
     const BAND_CLASS = { B1: "band-1", B0: "band-1", B2: "band-2", B3: "band-3", B4: "band-4" };
+    // Same rules and labels as the server (app/services/requirements.py), so a recruiter's
+    // overrides move a candidate between bands exactly as the AI's states would.
+    const BAND_LABELS = {
+        B1: "All mandatory requirements supported",
+        B2: "Mandatory requirements need review",
+        B3: "No evidence for 1 mandatory requirement",
+        B4: "No evidence for 2+ mandatory requirements",
+        B0: "No mandatory requirements set",
+    };
+    const BAND_ORDER = { B1: 0, B0: 0, B2: 1, B3: 2, B4: 3 };
+    const OVERRIDE_REASONS = {
+        evidence_elsewhere: "Evidence is elsewhere in the resume",
+        equivalent: "Equivalent skill or experience",
+        not_equivalent: "Quoted evidence is not equivalent",
+        ai_misread: "The AI misread the resume",
+        confirmed_with_candidate: "Confirmed with the candidate",
+        other: "Other (explain in the note)",
+    };
 
-    function requirementRows(requirements) {
-        return requirements.map(r => {
+    // The option label without its hint, e.g. "Other" rather than "Other (explain in the note)"
+    function reasonLabel(code) {
+        return (OVERRIDE_REASONS[code] || "").replace(/ \(.*\)$/, "");
+    }
+
+    // Recruiter review of the current run. Kept in this tab only: nothing is sent to the server.
+    let lastRun = null;
+    let submittedFiles = new Map(); // filename -> File, for "Open original file"
+    let overrides = new Map(); // filename -> Map(requirement id -> {state, reason, note, at})
+    let groupByReviewed = false;
+    let unexportedChanges = false;
+
+    function overridesFor(filename) {
+        if (!overrides.has(filename)) overrides.set(filename, new Map());
+        return overrides.get(filename);
+    }
+
+    // Requirements with the recruiter's overrides applied; the AI's state is kept as aiState.
+    function effectiveRequirements(candidate) {
+        const own = overrides.get(candidate.filename) || new Map();
+        return (candidate.assessment.requirements || []).map(r => {
+            const override = own.get(r.id) || null;
+            return { ...r, aiState: r.state, state: override ? override.state : r.state, override };
+        });
+    }
+
+    function bandOf(reqs) {
+        const mandatory = reqs.filter(r => r.importance === "mandatory");
+        if (!mandatory.length) return "B0";
+        const missing = mandatory.filter(r => r.state === "no_evidence").length;
+        if (missing >= 2) return "B4";
+        if (missing === 1) return "B3";
+        return mandatory.some(r => r.state === "needs_review") ? "B2" : "B1";
+    }
+
+    function countsOf(reqs) {
+        const counts = { supported: 0, needs_review: 0, no_evidence: 0 };
+        reqs.forEach(r => { if (r.state in counts) counts[r.state] += 1; });
+        return counts;
+    }
+
+    function groupOf(candidate) {
+        if (candidate.status === "error") return "error";
+        if (!candidate.assessment) return "unassessed";
+        return groupByReviewed ? bandOf(effectiveRequirements(candidate)) : candidate.assessment.band.code;
+    }
+
+    // Mirrors requirement_sort_key on the server, using the reviewed states
+    function reviewedSortKey(candidate) {
+        if (candidate.status === "error") return [2, 0, 0, 0, candidate.filename];
+        if (!candidate.assessment) return [1, 0, 0, 0, candidate.filename];
+        const reqs = effectiveRequirements(candidate);
+        const preferred = reqs.filter(r => r.importance === "preferred" && r.state === "supported").length;
+        const score = typeof candidate.similarity_score === "number" ? candidate.similarity_score : -1;
+        return [0, BAND_ORDER[bandOf(reqs)], -preferred, -score, candidate.filename];
+    }
+
+    function compareKeys(a, b) {
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] < b[i]) return -1;
+            if (a[i] > b[i]) return 1;
+        }
+        return 0;
+    }
+
+    function requirementRows(reqs) {
+        return reqs.map(r => {
             const info = STATE_INFO[r.state] || STATE_INFO.needs_review;
             const quotes = (Array.isArray(r.quotes) ? r.quotes : []).map(q => `
                 <blockquote class="evidence-quote ${q.verified ? "" : "unverified"}">
@@ -534,7 +644,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             <span>${escapeHTML(r.text)}</span>
                             <span class="importance-tag ${r.importance === "mandatory" ? "mandatory" : ""}">${escapeHTML(r.importance)}</span>
                         </div>
-                        <div class="req-state-label">${info.label}</div>
+                        <div class="req-state-label">${info.label}${r.override ? ` <span class="reviewed-tag">reviewed</span>` : ""}</div>
+                        ${overrideNote(r)}
                         ${r.note ? `<p class="req-note">${escapeHTML(r.note)}</p>` : ""}
                         ${quotes}
                     </div>
@@ -542,23 +653,35 @@ document.addEventListener("DOMContentLoaded", () => {
         }).join("");
     }
 
-    function renderRequirementResults(data, results) {
+    function overrideNote(r) {
+        if (!r.override) return "";
+        const ai = (STATE_INFO[r.aiState] || STATE_INFO.needs_review).label;
+        const note = r.override.note ? `: ${escapeHTML(r.override.note)}` : "";
+        return `<p class="override-note">Changed by reviewer from “${ai}”. ${escapeHTML(reasonLabel(r.override.reason))}${note}</p>`;
+    }
+
+    function renderRequirementResults(results) {
+        const openFilename = document.querySelector(".candidate-card.open")?.dataset.filename;
+        resultsLeaderboard.innerHTML = "";
+
         const notices = ["Candidates are grouped by the evidence found for mandatory requirements. Nobody is rejected automatically: review every group, including the lower ones."];
         if (results.length && results.every(r => r.status === "error")) {
             notices.push("None of the files could be processed. See the details on each card.");
         }
         renderNotice(runNotice, notices);
 
+        const ordered = groupByReviewed
+            ? [...results].sort((a, b) => compareKeys(reviewedSortKey(a), reviewedSortKey(b)))
+            : results;
         let currentGroup = null;
-        results.forEach(candidate => {
-            const assessment = candidate.assessment;
-            const group = candidate.status === "error" ? "error" : assessment ? assessment.band.code : "unassessed";
+        ordered.forEach(candidate => {
+            const group = groupOf(candidate);
             if (group !== currentGroup) {
                 currentGroup = group;
                 const label = group === "error" ? "Could not be processed"
                     : group === "unassessed" ? "Not assessed (AI unavailable)"
-                    : `${group} · ${assessment.band.label}`;
-                const count = results.filter(r => (r.status === "error" ? "error" : r.assessment ? r.assessment.band.code : "unassessed") === group).length;
+                    : `${group} · ${BAND_LABELS[group]}${groupByReviewed ? " (after review)" : ""}`;
+                const count = ordered.filter(r => groupOf(r) === group).length;
                 const header = document.createElement("h3");
                 header.className = `band-header ${BAND_CLASS[group] || ""}`;
                 header.textContent = `${label} (${count})`;
@@ -570,25 +693,39 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
+            const assessment = candidate.assessment;
             const card = document.createElement("div");
             card.className = "candidate-card";
+            card.dataset.filename = candidate.filename;
             const filename = escapeHTML(candidate.filename);
             const score = typeof candidate.similarity_score === "number" ? `${candidate.similarity_score} similarity` : "similarity unavailable";
 
             let headerRight;
             let details;
             if (assessment) {
-                const c = assessment.counts || {};
+                const reqs = effectiveRequirements(candidate);
+                const c = countsOf(reqs);
+                const reviewedBand = bandOf(reqs);
+                const bandChip = reviewedBand !== assessment.band.code
+                    ? `<span class="band-chip ${BAND_CLASS[reviewedBand]}" title="Band after the reviewer's changes">${escapeHTML(assessment.band.code)} → ${reviewedBand}</span>`
+                    : "";
                 headerRight = `
+                    ${bandChip}
                     <span class="evidence-counts" title="Requirements with evidence found / needing review / with no evidence found">
-                        <span class="state-supported">✓ ${c.supported || 0}</span>
-                        <span class="state-review">? ${c.needs_review || 0}</span>
-                        <span class="state-none">– ${c.no_evidence || 0}</span>
+                        <span class="state-supported">✓ ${c.supported}</span>
+                        <span class="state-review">? ${c.needs_review}</span>
+                        <span class="state-none">– ${c.no_evidence}</span>
                     </span>
                     <span class="similarity-small" title="Cosine similarity between the job description and resume (0-100). Not a probability of fit.">${score}</span>`;
                 details = `
                     <p class="candidate-summary">${escapeHTML(assessment.summary)}</p>
-                    <ul class="req-results">${requirementRows(assessment.requirements || [])}</ul>
+                    <div class="card-actions">
+                        <button type="button" class="secondary-btn review-btn">
+                            <i data-lucide="file-search"></i>
+                            <span>Review evidence</span>
+                        </button>
+                    </div>
+                    <ul class="req-results">${requirementRows(reqs)}</ul>
                     ${assessment.points_to_verify && assessment.points_to_verify.length ? `
                         <div class="recommendations-section">
                             <h4>Points to Verify with the Candidate</h4>
@@ -612,16 +749,286 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div class="card-details">
                     ${warningsHtml(candidate)}
+                    ${hiddenTextHtml(candidate)}
                     ${details}
                     ${rawTextSection(candidate)}
                 </div>
             `;
+            if (candidate.filename === openFilename) card.classList.add("open");
             attachToggle(card);
             attachRawToggle(card);
+            const reviewBtn = card.querySelector(".review-btn");
+            if (reviewBtn) reviewBtn.addEventListener("click", () => openReview(candidate, reviewBtn));
             resultsLeaderboard.appendChild(card);
+        });
+        renderReviewToolbar(results);
+        lucide.createIcons();
+    }
+
+    function renderReviewToolbar(results) {
+        const assessed = results.filter(r => r.status !== "error" && r.assessment);
+        const changes = assessed.reduce((n, r) => n + (overrides.get(r.filename)?.size || 0), 0);
+        const moved = assessed.filter(r => bandOf(effectiveRequirements(r)) !== r.assessment.band.code).length;
+        reviewToolbar.style.display = "flex";
+        reviewSummary.textContent = changes
+            ? `${changes} requirement${changes === 1 ? "" : "s"} changed by review; ${moved} candidate${moved === 1 ? "" : "s"} moved band.${unexportedChanges ? " Not exported yet." : ""}`
+            : "No review changes yet. Open a candidate and choose “Review evidence”.";
+        regroupBtn.style.display = moved || groupByReviewed ? "inline-flex" : "none";
+        regroupBtn.textContent = groupByReviewed ? "Group by AI bands" : "Group by reviewed bands";
+    }
+
+    regroupBtn.addEventListener("click", () => {
+        groupByReviewed = !groupByReviewed;
+        renderRequirementResults(lastRun.results);
+    });
+
+    // Hidden text the parser left out, shown so the recruiter can judge it
+    function hiddenTextHtml(candidate) {
+        const items = Array.isArray(candidate.hidden_text) ? candidate.hidden_text : [];
+        if (!items.length) return "";
+        const total = candidate.hidden_text_count || items.length;
+        const more = total > items.length ? `<p class="hidden-more">…and ${total - items.length} more.</p>` : "";
+        return `
+            <details class="hidden-text">
+                <summary><i data-lucide="eye-off"></i><span>Hidden text left out of the analysis (${total})</span></summary>
+                <ul>${items.map(t => `<li><code>${escapeHTML(t)}</code></li>`).join("")}</ul>
+                ${more}
+            </details>`;
+    }
+
+    // -------------------------------------------------------------
+    // Evidence review: requirements beside the extracted text
+    // -------------------------------------------------------------
+    let reviewCandidate = null;
+    let reviewReturnFocus = null;
+
+    function openReview(candidate, returnFocus) {
+        reviewCandidate = candidate;
+        reviewReturnFocus = returnFocus;
+        reviewTitle.textContent = candidate.filename;
+        reviewOpenOriginal.style.display = submittedFiles.has(candidate.filename) ? "inline-flex" : "none";
+        reviewHidden.innerHTML = hiddenTextHtml(candidate);
+        renderReview();
+        reviewOverlay.hidden = false;
+        document.body.classList.add("review-open");
+        reviewDocText.scrollTop = 0;
+        reviewClose.focus();
+    }
+
+    function closeReview() {
+        reviewOverlay.hidden = true;
+        document.body.classList.remove("review-open");
+        reviewCandidate = null;
+        if (reviewReturnFocus && document.contains(reviewReturnFocus)) reviewReturnFocus.focus();
+    }
+
+    reviewClose.addEventListener("click", closeReview);
+    reviewOverlay.addEventListener("click", e => { if (e.target === reviewOverlay) closeReview(); });
+    document.addEventListener("keydown", e => {
+        if (e.key === "Escape" && !reviewOverlay.hidden) closeReview();
+    });
+
+    reviewOpenOriginal.addEventListener("click", () => {
+        const file = reviewCandidate && submittedFiles.get(reviewCandidate.filename);
+        if (!file) return;
+        // The file is shown from this browser's memory; it is not uploaded again.
+        const url = URL.createObjectURL(file);
+        window.open(url, "_blank", "noopener");
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+    });
+
+    function renderReview() {
+        const candidate = reviewCandidate;
+        const reqs = effectiveRequirements(candidate);
+        const aiBand = candidate.assessment.band.code;
+        const band = bandOf(reqs);
+        reviewBand.className = `review-band ${BAND_CLASS[band] || ""}`;
+        reviewBand.textContent = band === aiBand
+            ? `${band} · ${BAND_LABELS[band]}`
+            : `${band} · ${BAND_LABELS[band]} (AI: ${aiBand})`;
+
+        reviewReqList.innerHTML = "";
+        reqs.forEach(r => reviewReqList.appendChild(reviewRow(r)));
+        reviewDocText.innerHTML = highlightedText(candidate.raw_text || "", reqs);
+        reviewDocText.querySelectorAll("mark").forEach(mark => {
+            mark.addEventListener("click", () => {
+                const row = reviewReqList.querySelector(`[data-req="${mark.dataset.req.split(" ")[0]}"]`);
+                if (row) flash(row);
+            });
         });
         lucide.createIcons();
     }
+
+    function reviewRow(r) {
+        const info = STATE_INFO[r.state] || STATE_INFO.needs_review;
+        const li = document.createElement("li");
+        li.className = `req-row ${info.cls}`;
+        li.dataset.req = r.id;
+        const quotes = (Array.isArray(r.quotes) ? r.quotes : []).map((q, qi) => q.verified && q.spans && q.spans.length
+            ? `<button type="button" class="evidence-quote quote-link" data-q="${escapeHTML(r.id)}-${qi}">
+                    “${escapeHTML(q.text)}”<span class="quote-tag">found in resume · show in text</span></button>`
+            : `<blockquote class="evidence-quote unverified">“${escapeHTML(q.text)}”
+                    <span class="quote-tag">not found in resume text</span></blockquote>`).join("");
+        const stateOptions = Object.entries(STATE_INFO)
+            .map(([value, s]) => `<option value="${value}" ${value === r.state ? "selected" : ""}>${s.label}</option>`).join("");
+        const reasonOptions = Object.entries(OVERRIDE_REASONS)
+            .map(([value, label]) => `<option value="${value}" ${r.override && r.override.reason === value ? "selected" : ""}>${label}</option>`).join("");
+
+        li.innerHTML = `
+            <i data-lucide="${info.icon}" class="req-state-icon" aria-hidden="true"></i>
+            <div class="req-body">
+                <div class="req-title">
+                    <span>${escapeHTML(r.id)} · ${escapeHTML(r.text)}</span>
+                    <span class="importance-tag ${r.importance === "mandatory" ? "mandatory" : ""}">${escapeHTML(r.importance)}</span>
+                </div>
+                <div class="req-state-label">${info.label}${r.override ? ` <span class="reviewed-tag">reviewed</span>` : ""}</div>
+                ${overrideNote(r)}
+                ${r.note ? `<p class="req-note">AI: ${escapeHTML(r.note)}</p>` : ""}
+                ${quotes}
+                <div class="override-actions">
+                    <button type="button" class="link-btn ov-edit">${r.override ? "Edit review" : "Change state"}</button>
+                    ${r.override ? `<button type="button" class="link-btn ov-undo">Undo, use the AI's state</button>` : ""}
+                </div>
+                <form class="override-form" hidden>
+                    <label>New state <select class="ov-state">${stateOptions}</select></label>
+                    <label>Reason <select class="ov-reason" required><option value="">Choose a reason…</option>${reasonOptions}</select></label>
+                    <label>Note <textarea class="ov-note" rows="2" maxlength="300" placeholder="Optional, unless the reason is Other">${r.override ? escapeHTML(r.override.note) : ""}</textarea></label>
+                    <div class="override-buttons">
+                        <button type="submit" class="secondary-btn ov-save">Save</button>
+                        <button type="button" class="link-btn ov-cancel">Cancel</button>
+                    </div>
+                </form>
+            </div>`;
+
+        const form = li.querySelector(".override-form");
+        const state = li.querySelector(".ov-state");
+        const reason = li.querySelector(".ov-reason");
+        const note = li.querySelector(".ov-note");
+        const save = li.querySelector(".ov-save");
+        const validate = () => {
+            save.disabled = !reason.value || (reason.value === "other" && !note.value.trim());
+        };
+        [state, reason, note].forEach(el => el.addEventListener("input", validate));
+        validate();
+
+        li.querySelector(".ov-edit").addEventListener("click", () => {
+            form.hidden = false;
+            state.focus();
+        });
+        li.querySelector(".ov-cancel").addEventListener("click", () => { form.hidden = true; });
+        form.addEventListener("submit", e => {
+            e.preventDefault();
+            if (save.disabled) return;
+            overridesFor(reviewCandidate.filename).set(r.id, {
+                state: state.value, reason: reason.value, note: note.value.trim(), at: new Date().toISOString(),
+            });
+            reviewChanged(r.id);
+        });
+        const undo = li.querySelector(".ov-undo");
+        if (undo) undo.addEventListener("click", () => {
+            overridesFor(reviewCandidate.filename).delete(r.id);
+            reviewChanged(r.id);
+        });
+        li.querySelectorAll(".quote-link").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const mark = reviewDocText.querySelector(`mark[data-q~="${btn.dataset.q}"]`);
+                if (mark) flash(mark);
+            });
+        });
+        return li;
+    }
+
+    function reviewChanged(reqId) {
+        unexportedChanges = true;
+        renderReview();
+        renderRequirementResults(lastRun.results);
+        const row = reviewReqList.querySelector(`[data-req="${reqId}"] .ov-edit`);
+        if (row) row.focus();
+    }
+
+    function flash(el) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        el.classList.remove("flash");
+        void el.offsetWidth; // restart the animation
+        el.classList.add("flash");
+    }
+
+    // Wraps verified quote spans in <mark>. Offsets come from Python and count code points,
+    // so the text is sliced by code point, not by UTF-16 unit (emoji would shift the marks).
+    function highlightedText(text, reqs) {
+        const chars = Array.from(text);
+        const marks = [];
+        reqs.forEach(r => (Array.isArray(r.quotes) ? r.quotes : []).forEach((q, qi) => {
+            if (!q.verified || !Array.isArray(q.spans)) return;
+            q.spans.forEach(span => {
+                const [start, end] = Array.isArray(span) ? span : [];
+                if (Number.isInteger(start) && Number.isInteger(end) && start >= 0 && start < end && end <= chars.length) {
+                    marks.push({ start, end, id: `${r.id}-${qi}`, req: r.id });
+                }
+            });
+        }));
+        const points = [...new Set([0, chars.length, ...marks.flatMap(m => [m.start, m.end])])].sort((a, b) => a - b);
+        let html = "";
+        for (let i = 0; i < points.length - 1; i++) {
+            const [a, b] = [points[i], points[i + 1]];
+            const chunk = escapeHTML(chars.slice(a, b).join(""));
+            const active = marks.filter(m => m.start <= a && m.end >= b);
+            html += active.length
+                ? `<mark class="ev-mark" data-q="${active.map(m => m.id).join(" ")}" data-req="${[...new Set(active.map(m => m.req))].join(" ")}">${chunk}</mark>`
+                : chunk;
+        }
+        return html;
+    }
+
+    // -------------------------------------------------------------
+    // Export the review as CSV
+    // -------------------------------------------------------------
+    function csvCell(value) {
+        let text = value === null || value === undefined ? "" : String(value);
+        // Cells starting with these are run as formulas by spreadsheet apps (CSV injection).
+        if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+        return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+
+    exportBtn.addEventListener("click", () => {
+        if (!lastRun) return;
+        const exportedAt = new Date().toISOString();
+        const header = ["run_id", "exported_at", "filename", "status", "ai_band", "reviewed_band", "requirement_id", "requirement",
+            "importance", "ai_state", "final_state", "changed_by_reviewer", "reason", "reviewer_note", "verified_quotes", "model"];
+        const rows = [header];
+        lastRun.results.forEach(candidate => {
+            const base = [lastRun.run_id, exportedAt, candidate.filename, candidate.status];
+            if (candidate.status === "error" || !candidate.assessment) {
+                rows.push([...base, "", "", "", "", "", "", "", "", "", "", "", candidate.error_message || "not assessed"]);
+                return;
+            }
+            const reqs = effectiveRequirements(candidate);
+            const reviewedBand = bandOf(reqs);
+            reqs.forEach(r => rows.push([
+                ...base, candidate.assessment.band.code, reviewedBand, r.id, r.text, r.importance, r.aiState, r.state,
+                r.override ? "yes" : "no", r.override ? reasonLabel(r.override.reason) : "", r.override ? r.override.note : "",
+                (r.quotes || []).filter(q => q.verified).map(q => q.text).join(" | "), candidate.assessment.model,
+            ]));
+        });
+        // A byte-order mark makes Excel read the file as UTF-8.
+        const csv = "﻿" + rows.map(row => row.map(csvCell).join(",")).join("\r\n");
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+        link.download = `hireintel-review-${lastRun.run_id}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+        unexportedChanges = false;
+        renderReviewToolbar(lastRun.results);
+    });
+
+    window.addEventListener("beforeunload", e => {
+        if (unexportedChanges) {
+            e.preventDefault();
+            e.returnValue = "";
+        }
+    });
 
     function renderResults(data) {
         resultsLeaderboard.innerHTML = "";
@@ -637,10 +1044,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const results = Array.isArray(data.results) ? data.results : [];
+        lastRun = { ...data, results };
         if (data.mode === "requirements") {
-            renderRequirementResults(data, results);
+            renderRequirementResults(results);
             return;
         }
+        reviewToolbar.style.display = "none";
 
         const notices = [];
         if (data.scoring_available === false) {
@@ -726,6 +1135,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 <div class="card-details">
                     ${warningsHtml(candidate)}
+                    ${hiddenTextHtml(candidate)}
                     ${analysisHtml}
                     ${rawTextSection(candidate)}
                 </div>
