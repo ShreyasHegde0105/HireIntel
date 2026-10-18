@@ -1,0 +1,10 @@
+Imran Khan
+imran.khan@example.com
+
+Mobile Developer, Relecloud (fictional) | Mar 2019 - Feb 2025
+- Built the customer app in React Native with TypeScript for iOS and Android.
+- Ran accessibility reviews against WCAG 2.1 for the app screens.
+- Automated UI flows with Playwright for the companion web admin panel.
+
+Education
+B.Sc. Physics, 2018

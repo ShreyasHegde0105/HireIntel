@@ -1,0 +1,12 @@
+Priya Nair
+priya.nair@example.com
+
+Software Engineer, Contoso Retail (fictional) | Jan 2023 - Dec 2024
+- Wrote Python scripts to automate stock reports.
+- Built and documented HTTP JSON endpoints for the mobile app using Flask.
+- Maintained the MySQL database behind the order system.
+
+QA Engineer, Contoso Retail (fictional) | Jun 2020 - Dec 2022
+- Wrote manual and Selenium test cases in Java.
+
+Skills: Python, Flask, MySQL, Git, Linux

@@ -1,0 +1,10 @@
+Neha Kulkarni
+neha.kulkarni@example.com
+
+Frontend Engineer, Proseware Health (fictional) | Feb 2021 - Jan 2025
+- Built the patient portal as a React and TypeScript single-page app.
+- Led the WCAG 2.1 AA accessibility fixes after an external audit.
+- Wrote unit tests with Jest and end-to-end tests with Playwright.
+
+Education
+B.E. Electronics, 2020

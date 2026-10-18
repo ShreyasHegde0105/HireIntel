@@ -126,6 +126,10 @@ ruff check .
 
 The tests use a fake Gemini client, so they need no API key and cost nothing. They cover the failure rules: a failed embedding never becomes a score and is never cached, failed analyses are never faked, temporary overloads are retried, bad files are rejected, and limits are enforced.
 
+### Evaluate requirement states
+
+`evaluation/` holds a synthetic set of 3 jobs and 12 resumes (60 requirement checks), a labelling rubric and a scoring script that compares the app's states with human labels. See [evaluation/README.md](evaluation/README.md).
+
 ---
 
 ## 🚀 Deploy (Render free tier)
@@ -155,4 +159,4 @@ CI (`.github/workflows/ci.yml`) runs lint and tests on every push, then builds t
 
 - Show the original PDF beside the evidence, with verified quotes highlighted.
 - Let the recruiter override a requirement state, with a reason.
-- Build a small labelled evaluation set to measure how often requirement states agree with human reviewers.
+- Get two reviewers to label the evaluation set in `evaluation/` so requirement states can be measured against humans, not just against the cases' design.

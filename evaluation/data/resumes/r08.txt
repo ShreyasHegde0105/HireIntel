@@ -1,0 +1,8 @@
+Vikram Rao | vikram.rao@example.com | Hyderabad
+Skills | SQL | Tableau | R
+Experience
+Reporting Analyst | Woodgrove Bank (fictional) | 2020 - 2025
+Built Tableau dashboards for branch performance | Wrote SQL against the data warehouse to reconcile monthly figures
+Used R to forecast branch footfall
+Education
+B.Sc. Statistics | 2019

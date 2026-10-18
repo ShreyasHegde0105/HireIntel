@@ -1,0 +1,10 @@
+Meera Krishnan
+meera.krishnan@example.com
+
+Data Analyst, Litware Insurance (fictional) | Apr 2021 - Mar 2025
+- Wrote SQL queries in Snowflake to analyse claim trends and churn.
+- Built and maintained Power BI dashboards used by regional managers.
+- Analysed pricing A/B tests and reported uplift with confidence intervals in Python (pandas, statsmodels).
+
+Education
+B.A. Economics, University of Mumbai (fictional campus), 2020

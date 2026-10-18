@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "note": "Synthetic data only. Every person, employer and address is invented.",
+  "jobs": [
+    {
+      "id": "J1",
+      "title": "Backend engineer",
+      "requirements": [
+        {"text": "3+ years of professional Python development", "importance": "mandatory"},
+        {"text": "Experience building REST APIs", "importance": "mandatory"},
+        {"text": "Experience with PostgreSQL", "importance": "mandatory"},
+        {"text": "Docker or other container tooling", "importance": "preferred"},
+        {"text": "Experience with AWS", "importance": "preferred"}
+      ],
+      "resumes": ["r01", "r02", "r03", "r04"]
+    },
+    {
+      "id": "J2",
+      "title": "Data analyst",
+      "requirements": [
+        {"text": "SQL for data analysis", "importance": "mandatory"},
+        {"text": "Bachelor's degree in statistics, mathematics, economics or a related field", "importance": "mandatory"},
+        {"text": "Building dashboards in Tableau or Power BI", "importance": "mandatory"},
+        {"text": "Python or R for analysis", "importance": "preferred"},
+        {"text": "Designing or analysing A/B tests", "importance": "preferred"}
+      ],
+      "resumes": ["r05", "r06", "r07", "r08"]
+    },
+    {
+      "id": "J3",
+      "title": "Frontend developer",
+      "requirements": [
+        {"text": "Building web applications with React", "importance": "mandatory"},
+        {"text": "Professional TypeScript experience", "importance": "mandatory"},
+        {"text": "2+ years of professional frontend development", "importance": "mandatory"},
+        {"text": "Web accessibility (WCAG)", "importance": "preferred"},
+        {"text": "Automated testing with Jest or Playwright", "importance": "preferred"}
+      ],
+      "resumes": ["r09", "r10", "r11", "r12"]
+    }
+  ]
+}

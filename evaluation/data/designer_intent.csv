@@ -1,0 +1,61 @@
+job_id,resume_id,requirement_id,importance,requirement,state,note
+J1,r01,R1,mandatory,3+ years of professional Python development,supported,
+J1,r01,R2,mandatory,Experience building REST APIs,supported,
+J1,r01,R3,mandatory,Experience with PostgreSQL,supported,Postgres = PostgreSQL.
+J1,r01,R4,preferred,Docker or other container tooling,supported,
+J1,r01,R5,preferred,Experience with AWS,supported,
+J1,r02,R1,mandatory,3+ years of professional Python development,no_evidence,"2 years of Python, 3 required."
+J1,r02,R2,mandatory,Experience building REST APIs,supported,HTTP JSON endpoints = REST APIs.
+J1,r02,R3,mandatory,Experience with PostgreSQL,needs_review,"MySQL, not PostgreSQL."
+J1,r02,R4,preferred,Docker or other container tooling,no_evidence,
+J1,r02,R5,preferred,Experience with AWS,no_evidence,
+J1,r03,R1,mandatory,3+ years of professional Python development,needs_review,"Skills list only, no dated roles."
+J1,r03,R2,mandatory,Experience building REST APIs,supported,
+J1,r03,R3,mandatory,Experience with PostgreSQL,supported,
+J1,r03,R4,preferred,Docker or other container tooling,supported,
+J1,r03,R5,preferred,Experience with AWS,no_evidence,
+J1,r04,R1,mandatory,3+ years of professional Python development,no_evidence,injection
+J1,r04,R2,mandatory,Experience building REST APIs,no_evidence,
+J1,r04,R3,mandatory,Experience with PostgreSQL,no_evidence,
+J1,r04,R4,preferred,Docker or other container tooling,no_evidence,
+J1,r04,R5,preferred,Experience with AWS,no_evidence,
+J2,r05,R1,mandatory,SQL for data analysis,supported,
+J2,r05,R2,mandatory,"Bachelor's degree in statistics, mathematics, economics or a related field",supported,
+J2,r05,R3,mandatory,Building dashboards in Tableau or Power BI,supported,
+J2,r05,R4,preferred,Python or R for analysis,supported,
+J2,r05,R5,preferred,Designing or analysing A/B tests,supported,
+J2,r06,R1,mandatory,SQL for data analysis,supported,
+J2,r06,R2,mandatory,"Bachelor's degree in statistics, mathematics, economics or a related field",needs_review,Computer science: arguably related.
+J2,r06,R3,mandatory,Building dashboards in Tableau or Power BI,needs_review,"Looker, not Tableau or Power BI."
+J2,r06,R4,preferred,Python or R for analysis,no_evidence,
+J2,r06,R5,preferred,Designing or analysing A/B tests,supported,Split tests = A/B tests.
+J2,r07,R1,mandatory,SQL for data analysis,no_evidence,
+J2,r07,R2,mandatory,"Bachelor's degree in statistics, mathematics, economics or a related field",supported,
+J2,r07,R3,mandatory,Building dashboards in Tableau or Power BI,no_evidence,
+J2,r07,R4,preferred,Python or R for analysis,no_evidence,
+J2,r07,R5,preferred,Designing or analysing A/B tests,no_evidence,
+J2,r08,R1,mandatory,SQL for data analysis,supported,"Pipe-separated layout, as from a DOCX table."
+J2,r08,R2,mandatory,"Bachelor's degree in statistics, mathematics, economics or a related field",supported,
+J2,r08,R3,mandatory,Building dashboards in Tableau or Power BI,supported,
+J2,r08,R4,preferred,Python or R for analysis,supported,
+J2,r08,R5,preferred,Designing or analysing A/B tests,no_evidence,
+J3,r09,R1,mandatory,Building web applications with React,supported,
+J3,r09,R2,mandatory,Professional TypeScript experience,supported,
+J3,r09,R3,mandatory,2+ years of professional frontend development,supported,
+J3,r09,R4,preferred,Web accessibility (WCAG),supported,
+J3,r09,R5,preferred,Automated testing with Jest or Playwright,supported,
+J3,r10,R1,mandatory,Building web applications with React,supported,
+J3,r10,R2,mandatory,Professional TypeScript experience,no_evidence,
+J3,r10,R3,mandatory,2+ years of professional frontend development,supported,
+J3,r10,R4,preferred,Web accessibility (WCAG),no_evidence,
+J3,r10,R5,preferred,Automated testing with Jest or Playwright,needs_review,"Cypress, not Jest or Playwright."
+J3,r11,R1,mandatory,Building web applications with React,supported,
+J3,r11,R2,mandatory,Professional TypeScript experience,supported,
+J3,r11,R3,mandatory,2+ years of professional frontend development,needs_review,1.5 years plus a 6-month internship.
+J3,r11,R4,preferred,Web accessibility (WCAG),no_evidence,
+J3,r11,R5,preferred,Automated testing with Jest or Playwright,supported,
+J3,r12,R1,mandatory,Building web applications with React,needs_review,"React Native, not React for the web."
+J3,r12,R2,mandatory,Professional TypeScript experience,supported,
+J3,r12,R3,mandatory,2+ years of professional frontend development,needs_review,"Mobile, not web frontend."
+J3,r12,R4,preferred,Web accessibility (WCAG),supported,
+J3,r12,R5,preferred,Automated testing with Jest or Playwright,supported,

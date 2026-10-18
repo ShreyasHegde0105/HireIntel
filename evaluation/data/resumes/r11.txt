@@ -1,0 +1,12 @@
+Divya Menon
+divya.menon@example.com
+
+Junior Frontend Developer, Wingtip Toys (fictional) | Jul 2023 - Dec 2024
+- Built product pages with React and TypeScript.
+- Added Jest unit tests for the cart components.
+
+Intern, Wingtip Toys (fictional) | Jan 2023 - Jun 2023
+- Fixed CSS bugs in the storefront.
+
+Education
+B.Tech Computer Science, 2022

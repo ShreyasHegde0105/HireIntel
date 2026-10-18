@@ -1,0 +1,14 @@
+Rahul Iyer
+rahul.iyer@example.com
+
+Profile
+Engineer interested in backend systems and cloud infrastructure.
+
+Skills
+Python, PostgreSQL, Docker, Kubernetes, REST, Git
+
+Projects
+- Personal finance tracker: a small web app with a REST API and a PostgreSQL database.
+
+Education
+B.Tech Information Technology, 2024

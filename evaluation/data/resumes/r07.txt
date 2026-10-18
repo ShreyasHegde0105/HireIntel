@@ -1,0 +1,12 @@
+Anita Desai
+anita.desai@example.com
+
+Mathematics Teacher, Greenfield School (fictional) | 2015 - 2024
+- Taught statistics and algebra to grades 9-12.
+- Tracked student results in Google Sheets and presented them to parents.
+
+Education
+M.Sc. Mathematics, 2014
+B.Sc. Mathematics, 2012
+
+Currently learning: data analysis online courses

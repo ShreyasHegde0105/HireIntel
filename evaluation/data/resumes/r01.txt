@@ -1,0 +1,13 @@
+Arjun Mehta
+arjun.mehta@example.com | Pune
+
+Senior Backend Engineer, Northwind Logistics (fictional) | Mar 2020 - Feb 2025
+- Designed and maintained REST APIs in Python (FastAPI) serving 2M requests a day.
+- Modelled shipment data in Postgres; tuned slow queries and wrote migrations with Alembic.
+- Packaged services as Docker images and deployed them to AWS ECS.
+
+Backend Developer, Tailspin Apps (fictional) | Jul 2018 - Feb 2020
+- Built Django services and internal tools in Python.
+
+Education
+B.E. Computer Engineering, 2018

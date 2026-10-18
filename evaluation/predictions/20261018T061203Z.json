@@ -1,0 +1,831 @@
+{
+  "created": "2026-10-18T06:12:30+00:00",
+  "models": [
+    "gemini-3.5-flash-lite"
+  ],
+  "items": [
+    {
+      "job_id": "J1",
+      "resume_id": "r01",
+      "requirement_id": "R1",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Senior Backend Engineer, Northwind Logistics (fictional) | Mar 2020 - Feb 2025",
+          "verified": true
+        },
+        {
+          "text": "Backend Developer, Tailspin Apps (fictional) | Jul 2018 - Feb 2020",
+          "verified": true
+        }
+      ],
+      "note": "The candidate has over 6 years of combined professional Python development experience from 2018 to 2025.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r01",
+      "requirement_id": "R2",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Designed and maintained REST APIs in Python (FastAPI) serving 2M requests a day.",
+          "verified": true
+        }
+      ],
+      "note": "The candidate explicitly designed and maintained REST APIs in Python.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r01",
+      "requirement_id": "R3",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Modelled shipment data in Postgres; tuned slow queries and wrote migrations with Alembic.",
+          "verified": true
+        }
+      ],
+      "note": "The candidate has hands-on experience modelling data and tuning queries in Postgres.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r01",
+      "requirement_id": "R4",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Packaged services as Docker images and deployed them to AWS ECS.",
+          "verified": true
+        }
+      ],
+      "note": "The resume explicitly mentions packaging services as Docker images.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r01",
+      "requirement_id": "R5",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Packaged services as Docker images and deployed them to AWS ECS.",
+          "verified": true
+        }
+      ],
+      "note": "The candidate lists experience deploying services to AWS ECS.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r02",
+      "requirement_id": "R1",
+      "state": "needs_review",
+      "quotes": [
+        {
+          "text": "Software Engineer, Contoso Retail (fictional) | Jan 2023 - Dec 2024",
+          "verified": true
+        },
+        {
+          "text": "Wrote Python scripts to automate stock reports.",
+          "verified": true
+        }
+      ],
+      "note": "The candidate used Python professionally from January 2023 to December 2024, which is approximately two years.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r02",
+      "requirement_id": "R2",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Built and documented HTTP JSON endpoints for the mobile app using Flask.",
+          "verified": true
+        }
+      ],
+      "note": "The resume directly mentions building HTTP JSON endpoints using Flask.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r02",
+      "requirement_id": "R3",
+      "state": "needs_review",
+      "quotes": [
+        {
+          "text": "Maintained the MySQL database behind the order system.",
+          "verified": true
+        }
+      ],
+      "note": "The candidate has database experience with MySQL, which is related but not PostgreSQL.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r02",
+      "requirement_id": "R4",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "No mention of Docker or container tooling appears in the resume.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r02",
+      "requirement_id": "R5",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "No mention of AWS appears in the resume.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r03",
+      "requirement_id": "R1",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "The resume shows graduation in 2024 and no professional work history to demonstrate 3+ years of Python development.",
+      "band": "B3",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r03",
+      "requirement_id": "R2",
+      "state": "needs_review",
+      "quotes": [
+        {
+          "text": "Personal finance tracker: a small web app with a REST API and a PostgreSQL database.",
+          "verified": true
+        }
+      ],
+      "note": "The resume lists REST in skills and a personal project with a REST API, but shows no professional experience building REST APIs.",
+      "band": "B3",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r03",
+      "requirement_id": "R3",
+      "state": "needs_review",
+      "quotes": [
+        {
+          "text": "PostgreSQL",
+          "verified": true
+        }
+      ],
+      "note": "PostgreSQL is listed in the skills section and a personal project, but professional experience is missing.",
+      "band": "B3",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r03",
+      "requirement_id": "R4",
+      "state": "needs_review",
+      "quotes": [
+        {
+          "text": "Docker",
+          "verified": true
+        }
+      ],
+      "note": "Docker is mentioned in the skills list, but there is no context of professional container tooling usage.",
+      "band": "B3",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r03",
+      "requirement_id": "R5",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "There is no mention of AWS anywhere on the resume.",
+      "band": "B3",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r04",
+      "requirement_id": "R1",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "The resume contains no mention of Python development.",
+      "band": "B4",
+      "manipulation_detected": true
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r04",
+      "requirement_id": "R2",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "The resume contains no mention of building REST APIs.",
+      "band": "B4",
+      "manipulation_detected": true
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r04",
+      "requirement_id": "R3",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "The resume contains no mention of PostgreSQL.",
+      "band": "B4",
+      "manipulation_detected": true
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r04",
+      "requirement_id": "R4",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "The resume contains no mention of Docker or container tooling.",
+      "band": "B4",
+      "manipulation_detected": true
+    },
+    {
+      "job_id": "J1",
+      "resume_id": "r04",
+      "requirement_id": "R5",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "The resume contains no mention of AWS.",
+      "band": "B4",
+      "manipulation_detected": true
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r05",
+      "requirement_id": "R1",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Wrote SQL queries in Snowflake to analyse claim trends and churn.",
+          "verified": true
+        }
+      ],
+      "note": "The resume directly demonstrates writing SQL queries for analysis.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r05",
+      "requirement_id": "R2",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "B.A. Economics, University of Mumbai (fictional campus), 2020",
+          "verified": true
+        }
+      ],
+      "note": "Economics is explicitly listed as a related degree field.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r05",
+      "requirement_id": "R3",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Built and maintained Power BI dashboards used by regional managers.",
+          "verified": true
+        }
+      ],
+      "note": "The resume explicitly mentions building dashboards in Power BI.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r05",
+      "requirement_id": "R4",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "reported uplift with confidence intervals in Python (pandas, statsmodels).",
+          "verified": true
+        }
+      ],
+      "note": "The resume shows the use of Python for analysis.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r05",
+      "requirement_id": "R5",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Analysed pricing A/B tests and reported uplift with confidence intervals",
+          "verified": true
+        }
+      ],
+      "note": "The resume directly mentions analyzing A/B tests.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r06",
+      "requirement_id": "R1",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Queried booking data with SQL (BigQuery) to answer weekly business questions.",
+          "verified": true
+        }
+      ],
+      "note": "The candidate directly states querying data with SQL.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r06",
+      "requirement_id": "R2",
+      "state": "needs_review",
+      "quotes": [
+        {
+          "text": "B.Sc. Computer Science, 2021",
+          "verified": true
+        }
+      ],
+      "note": "A Computer Science degree is related to quantitative fields, but does not explicitly match statistics, mathematics, or economics.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r06",
+      "requirement_id": "R3",
+      "state": "needs_review",
+      "quotes": [
+        {
+          "text": "Built Looker dashboards for the marketing team.",
+          "verified": true
+        }
+      ],
+      "note": "The candidate built dashboards, but used Looker instead of Tableau or Power BI.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r06",
+      "requirement_id": "R4",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "Neither Python nor R is mentioned in the resume.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r06",
+      "requirement_id": "R5",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Ran split tests on the checkout page with the product team and summarised the results.",
+          "verified": true
+        }
+      ],
+      "note": "Split tests are synonymous with A/B tests.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r07",
+      "requirement_id": "R1",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "The resume does not mention any SQL experience.",
+      "band": "B4",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r07",
+      "requirement_id": "R2",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "B.Sc. Mathematics, 2012",
+          "verified": true
+        }
+      ],
+      "note": "The candidate has a Bachelor's degree in mathematics.",
+      "band": "B4",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r07",
+      "requirement_id": "R3",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "No experience with Tableau or Power BI is listed in the resume.",
+      "band": "B4",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r07",
+      "requirement_id": "R4",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "Python or R are not mentioned in the resume.",
+      "band": "B4",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r07",
+      "requirement_id": "R5",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "There is no mention of designing or analysing A/B tests.",
+      "band": "B4",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r08",
+      "requirement_id": "R1",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Wrote SQL against the data warehouse to reconcile monthly figures",
+          "verified": true
+        }
+      ],
+      "note": "The candidate explicitly states writing SQL against a data warehouse.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r08",
+      "requirement_id": "R2",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "B.Sc. Statistics | 2019",
+          "verified": true
+        }
+      ],
+      "note": "The candidate holds a Bachelor of Science in Statistics.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r08",
+      "requirement_id": "R3",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Built Tableau dashboards for branch performance",
+          "verified": true
+        }
+      ],
+      "note": "The candidate has direct experience building dashboards in Tableau.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r08",
+      "requirement_id": "R4",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Used R to forecast branch footfall",
+          "verified": true
+        }
+      ],
+      "note": "The candidate specifies using R for analysis and forecasting.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J2",
+      "resume_id": "r08",
+      "requirement_id": "R5",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "There is no mention of designing or analyzing A/B tests.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r09",
+      "requirement_id": "R1",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Built the patient portal as a React and TypeScript single-page app.",
+          "verified": true
+        }
+      ],
+      "note": "The resume explicitly states she built web applications using React.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r09",
+      "requirement_id": "R2",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Built the patient portal as a React and TypeScript single-page app.",
+          "verified": true
+        }
+      ],
+      "note": "The resume confirms professional TypeScript experience.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r09",
+      "requirement_id": "R3",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Frontend Engineer, Proseware Health (fictional) | Feb 2021 - Jan 2025",
+          "verified": true
+        }
+      ],
+      "note": "Her work history spans from February 2021 to January 2025, which exceeds two years of frontend development.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r09",
+      "requirement_id": "R4",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Led the WCAG 2.1 AA accessibility fixes after an external audit.",
+          "verified": true
+        }
+      ],
+      "note": "She has direct experience with web accessibility standards.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r09",
+      "requirement_id": "R5",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Wrote unit tests with Jest and end-to-end tests with Playwright.",
+          "verified": true
+        }
+      ],
+      "note": "She demonstrates experience with both Jest and Playwright.",
+      "band": "B1",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r10",
+      "requirement_id": "R1",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Built marketing sites and dashboards in React",
+          "verified": true
+        }
+      ],
+      "note": "The resume directly states experience building applications in React.",
+      "band": "B3",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r10",
+      "requirement_id": "R2",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "TypeScript is not mentioned anywhere in the resume.",
+      "band": "B3",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r10",
+      "requirement_id": "R3",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Web Developer, Blue Yonder Media (fictional) | Jan 2020 - Dec 2024",
+          "verified": true
+        }
+      ],
+      "note": "The candidate has over four years of professional web development experience from 2020 to 2024.",
+      "band": "B3",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r10",
+      "requirement_id": "R4",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "Web accessibility and WCAG are not mentioned in the resume.",
+      "band": "B3",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r10",
+      "requirement_id": "R5",
+      "state": "needs_review",
+      "quotes": [
+        {
+          "text": "Set up Cypress tests for the signup flow.",
+          "verified": true
+        }
+      ],
+      "note": "The candidate has testing experience with Cypress, but the requirement specifies Jest or Playwright.",
+      "band": "B3",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r11",
+      "requirement_id": "R1",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Built product pages with React and TypeScript.",
+          "verified": true
+        }
+      ],
+      "note": "The resume explicitly states building pages with React.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r11",
+      "requirement_id": "R2",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Built product pages with React and TypeScript.",
+          "verified": true
+        }
+      ],
+      "note": "Professional TypeScript experience is directly stated.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r11",
+      "requirement_id": "R3",
+      "state": "needs_review",
+      "quotes": [
+        {
+          "text": "Junior Frontend Developer, Wingtip Toys (fictional) | Jul 2023 - Dec 2024",
+          "verified": true
+        },
+        {
+          "text": "Intern, Wingtip Toys (fictional) | Jan 2023 - Jun 2023",
+          "verified": true
+        }
+      ],
+      "note": "Total professional and internship experience combined is about 2 years, but professional-level duration specifically as a developer falls slightly short of 2 full years.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r11",
+      "requirement_id": "R4",
+      "state": "no_evidence",
+      "quotes": [],
+      "note": "Web accessibility or WCAG is not mentioned in the resume.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r11",
+      "requirement_id": "R5",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Added Jest unit tests for the cart components.",
+          "verified": true
+        }
+      ],
+      "note": "Automated testing with Jest is explicitly demonstrated.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r12",
+      "requirement_id": "R1",
+      "state": "needs_review",
+      "quotes": [
+        {
+          "text": "Built the customer app in React Native with TypeScript",
+          "verified": true
+        }
+      ],
+      "note": "The candidate has experience with React Native, but web React applications are not explicitly mentioned.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r12",
+      "requirement_id": "R2",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Built the customer app in React Native with TypeScript",
+          "verified": true
+        }
+      ],
+      "note": "The resume directly states professional TypeScript experience.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r12",
+      "requirement_id": "R3",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Mobile Developer, Relecloud (fictional) | Mar 2019 - Feb 2025",
+          "verified": true
+        }
+      ],
+      "note": "The candidate has over 2 years of professional development experience from 2019 to 2025.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r12",
+      "requirement_id": "R4",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Ran accessibility reviews against WCAG 2.1",
+          "verified": true
+        }
+      ],
+      "note": "The resume explicitly mentions performing WCAG accessibility reviews.",
+      "band": "B2",
+      "manipulation_detected": false
+    },
+    {
+      "job_id": "J3",
+      "resume_id": "r12",
+      "requirement_id": "R5",
+      "state": "supported",
+      "quotes": [
+        {
+          "text": "Automated UI flows with Playwright for the companion web admin panel.",
+          "verified": true
+        }
+      ],
+      "note": "The resume confirms automated testing experience using Playwright.",
+      "band": "B2",
+      "manipulation_detected": false
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,10 @@
+Karan Shah
+karan.shah@example.com
+
+Business Analyst, Adventure Works Travel (fictional) | Aug 2021 - Jul 2025
+- Queried booking data with SQL (BigQuery) to answer weekly business questions.
+- Built Looker dashboards for the marketing team.
+- Ran split tests on the checkout page with the product team and summarised the results.
+
+Education
+B.Sc. Computer Science, 2021

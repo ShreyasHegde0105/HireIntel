@@ -1,0 +1,9 @@
+Rohan Gupta
+rohan.gupta@example.com
+
+Web Developer, Blue Yonder Media (fictional) | Jan 2020 - Dec 2024
+- Built marketing sites and dashboards in React with plain JavaScript (ES2020).
+- Migrated the old jQuery widgets to React components.
+- Set up Cypress tests for the signup flow.
+
+Skills: JavaScript, React, HTML, CSS, Cypress
